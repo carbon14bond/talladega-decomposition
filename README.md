@@ -27,4 +27,8 @@ Caption: Panels show combined temperature data for pools and riffles of the Impa
 
 
 ### Dissolved oxygen sensors
-A total of four dissolved oxygen probes were deployed: in pools in 1) the lower impact reach, 2) the upper impact reach, 3) the lower control reach, and 4) the uppr control reach. These recorded dissolved oxygen concentrations as well as temperature every 15 minutes. In the DO_sensor_data folder, we provide the code used to calculate mean and SD of dissolved oxygen over each incubation period at each sensor. 
+A total of four dissolved oxygen probes were deployed: in pools in 1) the lower impact reach, 2) the upper impact reach, 3) the lower control reach, and 4) the uppr control reach. These recorded dissolved oxygen concentrations as well as temperature every 15 minutes. In the DO_sensor_data folder, we provide the code used to calculate mean and SD of dissolved oxygen over each incubation period at each sensor. We also generate figures showing that the flow reduction resulted in a substantial drop in DO in the impacted reach:
+
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/screenshot-2025-03-31-at-12-34-03-pm_orig.png)
+Caption Dissolved oxygen data from the upstream control pool (CU), downstream control pool (CD), upstream impact pool (IU) and downstream impact pool (ID). Note that DO sensors were deployed about 1-week into the Before (t1) deployment phase due to logistical conflicts, but oxygen is assumed to be stable throughout this period.
+
