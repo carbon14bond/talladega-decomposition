@@ -1,0 +1,183 @@
+---
+title: "Talladega weather station"
+author: "Charles T. Bond"
+date: "11/11/2024"
+output: html_document
+---
+
+##  Summary
+This pipeline is for calculation rainfall for different sampling events in the Talladega watershed from the AIMS project. 
+
+First, I calculate average rainfall in the months, weeks, or days leading up to or during the Talladega synoptic sampling event. 
+
+Second, I calculate average rainfall during the different phases of the Talladega stream flow manipulation experiment. I will also extract the timeseries for each period so that it can be ploted along with other time series data (STICs and DO sensors) from the experiment. 
+
+#####  Note
+Timezones for the sensor are in UTC/GMT, so in June of 2022, noon local time (12:00 CST) is recorded as 5 PM (17:00) UTC. 
+
+
+### Setup
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/chunk/Chapter_III_Decomp_assays/data_processing/weather")
+```
+
+It loads the package before it begins or else it gets the error again
+```{r, library}
+#library(vegan)
+library(tidyverse)
+```
+
+## Load the weather station data
+```{r}
+Tal_weather <- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/weather/Talladega_TempRain_2022.csv")
+
+head(Tal_weather)
+
+```
+
+```{r}
+library(scales)
+library(lubridate)
+#all_stics$datetime <- as.POSIXlt(all_stics$datetime, tz = "UTC", format = "%Y-%m-%d %H:%M:%OS")
+Tal_weather$datetime <- as.POSIXlt(Tal_weather$Timestamp, tz = "UTC", format = "%Y/%m/%d %H:%M")
+```
+
+
+# Talladega synoptic - Rainfall before sampling
+
+Synoptic sampling of the Talladega watershed occured June 9th and 10th of 2022. Heavy storms passed over the watershed in the days before sampling, so we want to quanity rainfall in the days leading up to the storm
+
+```{r}
+Tal_syn_rain_days <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-07 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-06-09 05:00:00", tz="UTC"),]
+sum(Tal_syn_rain_days$Rainfall_mm)
+```
+### Sum total over the two days before sampling: 11.5 cm rainfall
+Over the two-day period before sampling occurred, total rainfall was 11.5 cm. 
+
+That's all I wanted out of those for the synoptic, but for fun, here's a plot of rainfall leading up to the synoptic....
+```{r}
+Tal_syn_rain_plot <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-02-01 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-06-12 05:00:00", tz="UTC"),]
+
+Tal_syn_rain_plot$datetime<- as.POSIXct(Tal_syn_rain_plot$datetime)
+
+syn_start<- as.POSIXct("2022-06-09 12:00:00", tz="UTC")
+syn_end<- as.POSIXct("2022-06-10 23:00:00", tz="UTC")
+#tcol<- c("cornflowerblue","brown1")
+
+#library(tidyquant)
+TalSpring22_rain_plot <- ggplot(Tal_syn_rain_plot, aes(x=datetime, y=Rainfall_mm))+
+    geom_point(size=0.2)+
+  scale_shape_manual(values=1)+
+  geom_line(aes(linetype='dashed', colour='red'), alpha=0.5, linewidth = 0.3)
+TalSpring22_rain_plot
+
+TalSpring22_rain_plot2 <- TalSpring22_rain_plot + 
+  geom_vline(xintercept = syn_start, linetype="dotted", linewidth = 0.5, color="blue") +   
+  geom_vline(xintercept = syn_end, linetype="dotted", linewidth = 0.5, color="blue")
+TalSpring22_rain_plot2
+  
+lims <- as.POSIXct(strptime(c("2022-04-30 23:30:00", "2022-06-12 04:45:00"), 
+                   format = "%Y-%m-%d %H:%M"))
+
+TalSpring22_rain_plot3<- TalSpring22_rain_plot2 +
+  scale_x_datetime(labels = date_format("%m-%d"), 
+                       # breaks = date_breaks("2 hours"), 
+                        limits = lims) #,expand = c(0, 0))
+TalSpring22_rain_plot3
+```
+
+There we go. The dashed blue lines represents the beginning and end of microbial sampling, showing how sampling occurred immediately after the heavy rain event. Nothing fancy, just nice to have our observations in the field backed up by this weather data, as it will hhelp explain the presence of terrestrial microbes in thhe stream which may have been washed in by the flooding (11.5 cm of rainfall in 2 days is quite a lot of water).
+
+
+# Talladega experiment - Rainfall during each sampling phase
+Now, I will calculate rainfall daily averages and totals for each of four time periods (corresponding with the incubation periods of decomposition assays, i.e., t1, t2a, t2b, t3). 
+
+
+```{r}
+## Note, I set the limits at 
+#### midnight of the day decomposition assays were deployed (i.e., just before deployment) to the midnight before retrieval.
+t1Tal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-07 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-06-27 05:00:00", tz="UTC"),]
+
+t2aTal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-22 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-07-12 05:00:00", tz="UTC"),]
+
+t2bTal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-27 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-07-22 05:00:00", tz="UTC"),]
+
+t3Tal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-07-22 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-08-12 05:00:00", tz="UTC"),]
+```
+
+```{r}
+library(dplyr)
+t1_rainsum <- t1Tal_weather %>% summarize(time="t1", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t1_rainsum
+
+t2a_rainsum <- t2aTal_weather %>% summarize(time="t2a", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t2a_rainsum
+
+t2b_rainsum <- t2bTal_weather %>% summarize(time="t2b", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t2b_rainsum
+
+t3_rainsum <- t3Tal_weather %>% summarize(time="t3", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t3_rainsum
+
+TAL_DD_rainfall_summaries<- rbind(t1_rainsum,t2a_rainsum,t2b_rainsum,t3_rainsum)
+write.csv(TAL_DD_rainfall_summaries, "TAL_DD_rainfall_summaries.csv")
+
+
+```
+
+Now to plot the rainfall over the couse of the experiment...
+
+```{r}
+Tal_exp_rain_plot <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-01 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-08-15 05:00:00", tz="UTC"),]
+
+Tal_exp_rain_plot$datetime<- as.POSIXct(Tal_exp_rain_plot$datetime)
+dam_day<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+undam_day<- as.POSIXct("2022-07-25 19:00:00", tz="UTC")
+t1min<- as.POSIXct("2022-06-07 18:00:00", tz="UTC")
+t1mid<- as.POSIXct("2022-06-27 18:00:00", tz="UTC") - days(10) 
+t1max<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+
+t2amin<- as.POSIXct("2022-06-22 18:00:00", tz="UTC")
+t2amid<- as.POSIXct("2022-07-12 18:00:00", tz="UTC") - days(10) 
+t2amax<- as.POSIXct("2022-07-12 18:00:00", tz="UTC")
+
+t2bmin<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+t2bmid<- as.POSIXct("2022-07-22 6:00:00", tz="UTC") - days(12) 
+t2bmax<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+
+t3min<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+t3mid<- as.POSIXct("2022-08-12 6:00:00", tz="UTC") - days(10)
+t3max<- as.POSIXct("2022-08-12 18:00:00", tz="UTC")
+
+#library(tidyquant)
+TalExp_rain_plot <- ggplot(Tal_exp_rain_plot, aes(x=datetime, y=Rainfall_mm))+
+    geom_point(size=0.2)+
+  scale_shape_manual(values=1)+
+  geom_line(aes(linetype='dashed', colour='red'), alpha=0.5, linewidth = 0.3)
+TalExp_rain_plot
+
+TalExp_rain_plot2 <- TalExp_rain_plot + 
+  aes(ymin=-5)+
+  geom_vline(xintercept = dam_day, linetype="dotted", linewidth = 0.5, color="blue") +   
+  geom_vline(xintercept = undam_day, linetype="dotted", linewidth = 0.5, color="blue") +
+    annotate('text', x=dam_day, y=18, label = "\nFlow diversion",  angle=90, size=4, vjust=-0.4)+
+  annotate('text', x=undam_day, y=18, label = "\nFlow restoration",  angle=90, size=4, vjust=-0.4)+
+  ### rectangles to represent incubation phases
+  ## t1
+    annotate('rect', xmin = t1min, xmax = t1max, ymin = -1, ymax = -3, alpha = 0.7, fill = 'blue', col = 'black')+
+  annotate('text', x=t1mid , y=-2, label = "t1", size=4)+
+  ## t2a
+    annotate('rect', xmin = t2amin, xmax = t2amax, ymin = -3, ymax = -5, alpha = 0.7, fill = 'yellow', col = 'black')+
+  annotate('text', x=t2amid , y=-4, label = "t2a",   size=4)+
+  ## t2b
+    annotate('rect', xmin = t2bmin, xmax = t2bmax, ymin = -1, ymax = -3, alpha = 0.7, fill = 'red', col = 'black')+
+  annotate('text', x=t2bmid , y=-2, label = "t2b",   size=4)+
+  ## t3
+    annotate('rect', xmin = t3min, xmax = t3max, ymin = -1, ymax = -3, alpha = 0.7, fill = 'green', col = 'black')+
+  annotate('text', x=t3mid , y=-2, label = "t3",   size=4)
+TalExp_rain_plot2
+
+```
+
