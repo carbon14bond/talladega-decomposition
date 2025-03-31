@@ -32,3 +32,13 @@ A total of four dissolved oxygen probes were deployed: in pools in 1) the lower 
 ![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/screenshot-2025-03-31-at-12-34-03-pm_orig.png)
 Caption Dissolved oxygen data from the upstream control pool (CU), downstream control pool (CD), upstream impact pool (IU) and downstream impact pool (ID). Note that DO sensors were deployed about 1-week into the Before (t1) deployment phase due to logistical conflicts, but oxygen is assumed to be stable throughout this period.
 
+### Rainfall data
+In order to account for rainfall (which can affect moisture in terestrial habitats as well as flow conditions in the stream), we used a nearby weather station to capture rainfall data. In the weather folder, an R markdown document contains code used to estimate average daily rainfall over each incubation period, and to geneerate the following figure:
+
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/screenshot-2025-03-31-at-3-27-59-pm_orig.png)
+Daily average rainfall by time period:
+t1 = 6.77 mm per day
+t2a = 6.00 mm per day
+t2b = 6.61 mm per day
+t3 = 6.95 mm per day
+So, daily average rainfall was fairly stable (6-7 mm per day) throughout the study period. A more sophisticated hydrologist than I migh be able to get more out of this data...
