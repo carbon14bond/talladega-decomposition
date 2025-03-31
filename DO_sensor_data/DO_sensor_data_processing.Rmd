@@ -1,0 +1,273 @@
+---
+title: "Dissolved_oxygen_sensor_processing"
+author: "Charles T. Bond"
+date: "11/12/2024"
+output: html_document
+---
+
+##  Summary
+This pipeline is for processing dissolved oxygen sensor data.
+
+
+### Setup
+```{r setup, include=FALSE}
+options(knitr.duplicate.label = "allow")
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/chunk/Chapter_III_Decomp_assays/data_processing/DO_sensor_data")
+```
+
+It loads the package before it begins or else it gets the error again
+```{r, library}
+library(tidyverse)
+library(scales)
+library(lubridate)
+```
+
+
+## Load dissolved oxygen sensor data
+```{r}
+impact_down <- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/DO_sensor_data/impact_bottom_DO.csv")
+impact_up <- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/DO_sensor_data/impact_top_DO.csv")
+control_down<- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/DO_sensor_data/control_bottom_DO.csv")
+control_up <- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/DO_sensor_data/control_top_DO.csv")
+
+head(control_up)
+```
+
+Now we want to take the data from the four sensors and mege them into one dataframe (or tibble), along with important metadata. We will then calculated average dissolved oxygen in each reach over each decomposition assay incubation timeframe.
+```{r}
+#### Addiing identifiers (site and treatment) to sensor data before merging into one tibble
+
+IDtib <- add_column(impact_down,Location=as.factor("ID")) %>% add_column(Treatment=as.factor("Impact"))
+
+IUtib <- add_column(impact_up,Location=as.factor("IU")) %>% add_column(Treatment=as.factor("Impact"))
+
+CDtib <- add_column(control_down,Location=as.factor("CD")) %>% add_column(Treatment=as.factor("Control"))
+
+CUtib <- add_column(control_up,Location=as.factor("CU")) %>% add_column(Treatment=as.factor("Control"))
+
+dd_allDO<- rbind(IDtib, IUtib, CDtib, CUtib)
+head(dd_allDO)
+write.csv(dd_allDO, "All_DOsensors_tibble.csv")
+```
+
+## Visualization
+Now let's take a look at the sensors, make some plots to check it out visually before moving forward with averaging data over incubation phases. 
+```{r}
+## formatting datetime
+dd_allDO$datetime <- as.POSIXlt(dd_allDO$datetime, tz = "UTC", format = "%m/%d/%Y %H:%M")
+dd_allDO$datetime<- as.POSIXct(dd_allDO$datetime)+years(2000)
+head(dd_allDO)
+### focus on dates of the experiment
+dd_allDO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-14 17:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-08-13 18:00:00", tz="UTC"),]
+
+## sensors were activated in te lab June 11th, and placed a few days later (on te 14th). So we're missing about a week of data as far as the decomposition assays go few days after t1 decomposition assays were deployed.  We'll use the data for the period we have for T1, this should be high DO in any case as it is before the manipulation began.
+
+head(dd_allDO)
+
+```
+
+
+```{r}
+theme_set(theme_bw())
+
+dd_allDO$Location <- factor(dd_allDO$Location, levels=c('CU', 'IU', 'CD', 'ID'))
+dry_down_DO <- ggplot(dd_allDO, aes(x=datetime, y=DO_mgL))+
+    geom_point(size=0.2)+
+    facet_wrap(~Location, nr=2)#+
+   # geom_smooth(method='gam', col='red', aes(group=Location))
+dry_down_DO
+```
+
+Now with graphics to help communicate the experiment timeline...
+```{r}
+
+### now with experiment graphics
+dam_day<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+undam_day<- as.POSIXct("2022-07-25 19:00:00", tz="UTC")
+t1min<- as.POSIXct("2022-06-07 18:00:00", tz="UTC")
+t1mid<- as.POSIXct("2022-06-27 18:00:00", tz="UTC") - days(10) 
+t1max<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+
+t2amin<- as.POSIXct("2022-06-22 18:00:00", tz="UTC")
+t2amid<- as.POSIXct("2022-07-12 18:00:00", tz="UTC") - days(10) 
+t2amax<- as.POSIXct("2022-07-12 18:00:00", tz="UTC")
+
+t2bmin<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+t2bmid<- as.POSIXct("2022-07-22 6:00:00", tz="UTC") - days(12) 
+t2bmax<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+
+t3min<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+t3mid<- as.POSIXct("2022-08-12 6:00:00", tz="UTC") - days(10)
+t3max<- as.POSIXct("2022-08-12 18:00:00", tz="UTC")
+
+xtmin<- as.POSIXct("2022-06-05 18:00:00", tz="UTC")
+
+### now with experiment graphics
+
+
+dry_down_DO2<- dry_down_DO+
+  aes(ymin=-3.8, xmin=xtmin)+
+  geom_vline(xintercept = dam_day, linetype="dotted", linewidth = 0.5, color="blue") +   
+  geom_vline(xintercept = undam_day, linetype="dotted", linewidth = 0.5, color="blue") +
+    annotate('text', x=dam_day, y=10, label = "\nFlow diversion",  #angle=90, 
+             size=3, hjust=-0.05)+
+  annotate('text', x=undam_day, y=10, label = "\nFlow restoration",  #angle=90, 
+           size=3, hjust=-0.05)+
+  ### rectangles to represent incubation phases
+  ## t1
+    annotate('rect', xmin = t1min, xmax = t1max, ymin = -0.5, ymax = -2, alpha = 0.7, fill = 'blue', col = 'black')+
+  annotate('text', x=t1mid , y=-1.25, label = "t1", size=3)+
+  ## t2a
+    annotate('rect', xmin = t2amin, xmax = t2amax, ymin = -2, ymax = -3.5, alpha = 0.7, fill = 'yellow', col = 'black')+
+  annotate('text', x=t2amid , y=-2.75, label = "t2a",   size=3)+
+  ## t2b
+    annotate('rect', xmin = t2bmin, xmax = t2bmax, ymin = -0.5, ymax = -2, alpha = 0.7, fill = 'red', col = 'black')+
+  annotate('text', x=t2bmid , y=-1.25, label = "t2b",   size=3)+
+  ## t3
+    annotate('rect', xmin = t3min, xmax = t3max, ymin = -0.5, ymax = -2, alpha = 0.7, fill = 'green', col = 'black')+
+  annotate('text', x=t3mid , y=-1.25, label = "t3",   size=3)+
+  ylab(label="Dissolved oxygen (mg/L)")
+
+dry_down_DO2
+
+
+```
+
+### Calculating dissolved oxygen means for each sensor in each incubation period
+
+#### T1 - Before
+NOTE: The first week of DO data for T1
+```{r}
+
+t1DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-08 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-06-27 05:00:00", tz="UTC"),]
+#t1stics <- date_test[date_test$datetime > as.POSIXct("2022-06-07 23:45:00", tz="UTC") & date_test$datetime < as.POSIXct("2022-06-07 23:45:00", tz="UTC")
+
+t1_DO_summmary <- t1DO %>% group_by(Location) %>% summarize(time="t1", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+t1_DO_summmary 
+```
+
+#### t2a - Before into flow reduction
+```{r}
+t2aDO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-23 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-12 05:00:00", tz="UTC"),]
+
+t2a_DO_summmary <- t2aDO %>% group_by(Location) %>% summarize(time="t2a", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+t2a_DO_summmary 
+
+```
+
+#### t2b - flow reduction
+```{r}
+t2bDO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-28 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-22 05:00:00", tz="UTC"),]
+
+t2b_DO_summmary <- t2bDO %>% group_by(Location) %>% summarize(time="t2b", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+t2b_DO_summmary 
+```
+
+#### t3 - flow restoration phase
+```{r}
+t3DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-23 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-08-12 05:00:00", tz="UTC"),]
+
+t3_DO_summmary <- t3DO %>% group_by(Location) %>% summarize(time="t3", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+t3_DO_summmary 
+```
+
+```{r}
+stic_decomptime_summaries<- rbind(t1_DO_summmary, t2a_DO_summmary, t2b_DO_summmary, t3_DO_summmary)
+write.csv(stic_decomptime_summaries, "decomp_DO_summaries.csv")
+
+```
+
+### core dry-down
+1-week average DO for all 6 time points
+```{r}
+#T1 NOTE, Control is missing data extending out to a week, but we assume DO was stable during this period due to flowing conditions
+T1DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-14 18:00:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-06-16 17:45:00", tz="UTC"),]
+
+T1_DO_summmary <- T1DO %>% group_by(Location) %>% summarize(time="T1", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T1_DO_summmary 
+
+#T2
+T2DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-05 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-12 05:00:00", tz="UTC"),]
+
+T2_DO_summmary <- T2DO %>% group_by(Location) %>% summarize(time="T2", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T2_DO_summmary 
+
+#T3
+T3DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-18 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-25 05:00:00", tz="UTC"),]
+
+T3_DO_summmary <- T3DO %>% group_by(Location) %>% summarize(time="T3", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T3_DO_summmary 
+
+#T4
+T4DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-19 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-26 05:00:00", tz="UTC"),]
+
+T4_DO_summmary <- T4DO %>% group_by(Location) %>% summarize(time="T4", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T4_DO_summmary 
+
+#T5
+T5DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-23 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-30 05:00:00", tz="UTC"),]
+
+T5_DO_summmary <- T5DO %>% group_by(Location) %>% summarize(time="T5", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T5_DO_summmary 
+
+#T6
+T6DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-08-02 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-08-09 05:00:00", tz="UTC"),]
+
+T6_DO_summmary <- T6DO %>% group_by(Location) %>% summarize(time="T6", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T6_DO_summmary 
+
+
+
+stic_decomptime_summaries<- rbind(T1_DO_summmary, T2_DO_summmary, T3_DO_summmary, T4_DO_summmary, T5_DO_summmary, T6_DO_summmary)
+write.csv(stic_decomptime_summaries, "expcore_1wkDO_summaries.csv")
+
+```
+
+1-week average DO for all 6 time points
+```{r}
+#T1 NOTE, Control is missing data extending out to a week, but we assume DO was stable during this period due to flowing conditions
+T1DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-06-14 18:00:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-06-16 17:45:00", tz="UTC"),]
+
+T1_DO_summmary <- T1DO %>% group_by(Location) %>% summarize(time="T1", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T1_DO_summmary 
+
+#T2
+T2DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-05 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-12 05:00:00", tz="UTC"),]
+
+T2_DO_summmary <- T2DO %>% group_by(Location) %>% summarize(time="T2", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T2_DO_summmary 
+
+#T3
+T3DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-18 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-25 05:00:00", tz="UTC"),]
+
+T3_DO_summmary <- T3DO %>% group_by(Location) %>% summarize(time="T3", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T3_DO_summmary 
+
+#T4
+T4DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-19 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-26 05:00:00", tz="UTC"),]
+
+T4_DO_summmary <- T4DO %>% group_by(Location) %>% summarize(time="T4", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T4_DO_summmary 
+
+#T5
+T5DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-07-23 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-07-30 05:00:00", tz="UTC"),]
+
+T5_DO_summmary <- T5DO %>% group_by(Location) %>% summarize(time="T5", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T5_DO_summmary 
+
+#T6
+T6DO <- dd_allDO[dd_allDO$datetime> as.POSIXct("2022-08-02 04:45:00", tz="UTC") & dd_allDO$datetime< as.POSIXct("2022-08-09 05:00:00", tz="UTC"),]
+
+T6_DO_summmary <- T6DO %>% group_by(Location) %>% summarize(time="T6", mean_temp=mean(Temp_C), sd_temp=sd(Temp_C), mean_DO=mean(DO_mgL), sd_DO=sd(DO_mgL))
+T6_DO_summmary 
+
+
+
+stic_decomptime_summaries<- rbind(T1_DO_summmary, T2_DO_summmary, T3_DO_summmary, T4_DO_summmary, T5_DO_summmary, T6_DO_summmary)
+write.csv(stic_decomptime_summaries, "expcore_24hrDO_summaries.csv")
+
+```
+
+```
