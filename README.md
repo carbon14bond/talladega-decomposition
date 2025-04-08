@@ -40,5 +40,29 @@ Daily average rainfall by time period:
 t1 = 6.77 mm per day
 t2a = 6.00 mm per day
 t2b = 6.61 mm per day
-t3 = 6.95 mm per day
+t3 = 6.95 mm per day.
 So, daily average rainfall was fairly stable (6-7 mm per day) throughout the study period. A more sophisticated hydrologist than I migh be able to get more out of this data...
+
+Next, we have code to calculate decomposition rates.
+
+# Decomposition Assays: 
+## Cotton Strip Data Processing 
+###  Summary
+This pipeline uses cotton strip tensile strength (TS) data to calculate tensile strength loss (TSL) and estimate exponential decay constants (k). The percent of tensile strength lost per day of deployment is calculate using the formula from Tiegs et. al. 2019 (https://doi.org/10.1016/j.ecolind.2019.105466):
+
+#### TSL = 100*[1-(TS~t~/TS~0~)]/t 
+
+where t is incubation time in days, TS~t~ is tensile strength at time t, and TS~0~ is the mean TS of undecomposed control/reference strips. 
+
+
+While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k~D~*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302):
+
+#### k~D~= -ln(TS~t~/TS~0~)/t
+
+
+Additionally, we have *temperature data from STIC sensors at each of the 12 locations* where leaf litter and cotton strips were incubated. In a separate pipeline, I used temperature data from each STIC over to generate average temperatures for each incubation period at each STIC, which will allow us to calculate temperature-normalized decay constants. The following derivation of k~T~ assumes a linear effect of temperature on decomposition rates, but note that oter models are also possible:
+
+#### k~T~ = -ln(TS~t~/TS~0~) / ((1/T~R~) * T~avg~ * t)
+
+Using the formulas above, we will calculate TSL, k~D~, and k~T~ of cotton strip assays belonging to different treatment groups.
+
