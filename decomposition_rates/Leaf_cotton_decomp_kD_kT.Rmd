@@ -1,0 +1,323 @@
+---
+title: "Decomp_kD-kT"
+author: "Charles T. Bond"
+date: "10/17/2024"
+output: html_document
+---
+# AIMS Southeastern Flow Manipulation Experiment:
+# Decomposition Assays: 
+## Cotton Strip Data Processing 
+###  Summary
+This pipeline uses cotton strip tensile strength (TS) data to calculate tensile strength loss (TSL) and estimate exponential decay constants (k). The percent of tensile strength lost per day of deployment is calculate using the formula from Tiegs et. al. 2019 (https://doi.org/10.1016/j.ecolind.2019.105466):
+
+#### TSL = 100*[1-(TS~t~/TS~0~)]/t 
+
+where t is incubation time in days, TS~t~ is tensile strength at time t, and TS~0~ is the mean TS of undecomposed control/reference strips. 
+
+
+While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k~D~*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302):
+
+#### k~D~= -ln(TS~t~/TS~0~)/t
+
+
+Additionally, we have *temperature data from STIC sensors at each of the 12 locations* where leaf litter and cotton strips were incubated. In a separate pipeline, I used temperature data from each STIC over to generate average temperatures for each incubation period at each STIC, which will allow us to calculate temperature-normalized decay constants. The following derivation of k~T~ assumes a linear effect of temperature on decomposition rates, but note that oter models are also possible:
+
+#### k~T~ = -ln(TS~t~/TS~0~) / ((1/T~R~) * T~avg~ * t)
+
+Using the formulas above, we will calculate TSL, k~D~, and k~T~ of cotton strip assays belonging to different treatment groups.
+
+### Setup
+```{r setup, include=FALSE}
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/chunk/Chapter_III_Decomp_assays/data_processing")
+```
+
+It loads the package before it begins or else it gets the error again
+```{r, library}
+
+library(vegan)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+```
+
+### Tensile strength data
+Note:  T~0~= 69.22 lb (average strength of control strips).
+```{r}
+TStest <- read.csv("CS_TS_test.csv")
+### Return to this step to standardize outlier removal approach
+head(TStest)
+summary(TStest$Tensile.strength)
+```
+
+Now, tensile strength of cotton strip assays is highly sensitive, and outliers may result from difference in the envionment, handling, or strengthh measurement itself. It is therefore advisable to have a standardized prtocol for removing outliers from each level of the experiment. In our experiment, we had five replicates for each level ("Site_time", each deployment period at each site), so we can use the variable "Site_time" to identify our blocks, calculate the interquartile range (IQR) for each block, and remove samples that fall 1.5*IQR above or below our third and first quartiles, respectively. 
+
+```{r}
+#TStest$Tensile.strength<- log(TStest$Tensile.strength)
+list_quantiles <- tapply(TStest$Tensile.strength, TStest$Site_time, quantile)
+ 
+Q1s <- sapply(1:44, function(i) list_quantiles[[i]][2])
+Q3s <- sapply(1:44, function(i) list_quantiles[[i]][4])
+ 
+IQRs <- tapply(TStest$Tensile.strength, TStest$Site_time, IQR)
+ 
+Lowers <- Q1s - 1.5*IQRs
+Uppers <- Q3s + 1.5*IQRs
+ 
+datas <- split(TStest, TStest$Site_time)
+ 
+data_no_outlier <- NULL
+for (i in 1:44){
+out <- subset(datas[[i]], datas[[i]]$Tensile.strength > Lowers[i] & datas[[i]]$Tensile.strength < Uppers[i])
+data_no_outlier <- rbind(data_no_outlier, out)
+}
+ 
+dim(data_no_outlier)
+TStest<- data_no_outlier
+```
+12 outliers removed...
+
+
+#### Tensile strength loss
+```{r}
+## net TSL, as in, the total amount of strength lost over the entire incubation.
+TStest$netTSL <- 69.22 - TStest$Tensile.strength
+summary(TStest$netTSL)
+## assume negative values are roughly zero loss
+TStest <- TStest %>% mutate(netTSL= if_else(netTSL<0, 0, netTSL))
+summary(TStest$netTSL)
+
+## net TSL percent of control TS
+TStest$netTSLprc <- 1 - TStest$Tensile.strength/69.22
+summary(TStest$netTSLprc)
+## assume negative values are roughly zero loss
+TStest <- TStest %>% mutate(netTSLprc= if_else(netTSLprc<0, 0, netTSLprc))
+summary(TStest$netTSLprc)
+
+```
+
+Note:
+Some decomposed strips (mostly terrestrial), end up having a slightly higher strength than the control strips (resulting in negative net TSL values) due to the margin of error/variance in cotton strip strength measurements. These small negative values thus correspond with extremely slow (near-zero) decay rates, which can occur due to moisture limitations in terrestrial habitats. 
+
+TSL percent per day
+```{r}
+
+## note, default for log() in base R in natural log
+TStest$kD <- -log(TStest$Tensile.strength/69.22)/TStest$Incubation.days
+summary(TStest$kD)
+
+```
+
+
+kD
+```{r}
+## note, default for log() in base R in natural log
+TStest$kD <- -log(TStest$Tensile.strength/69.22)/TStest$Incubation.days
+summary(TStest$kD)
+
+```
+
+Loading and merging temperature data
+```{r}
+library(tidyverse)
+STIC_test <- read.csv("decomp_STICstats_summaries.csv")
+STIC_test$Site_time <- paste(STIC_test$Site, STIC_test$time, sep="")
+
+TS_STIC_test<- merge(TStest, STIC_test[,4:9], by='Site_time')
+```
+
+Estimating k~T~
+```{r}
+Tr<- 1
+TS_STIC_test$kT<- -log(TS_STIC_test$Tensile.strength/69.22)/((1/Tr)*(TS_STIC_test$mean_temp)*(TS_STIC_test$Incubation.days))
+
+summary(TS_STIC_test$kT)
+TS_STIC_test$kT
+```
+
+Voila, we have TSL, k~D~, and k~T~ 
+```{r}
+write.csv(TS_STIC_test, "CS_decomp_full_10.30.2024.csv")
+```
+Now with that saved, we'll continue to tthe leaf litter bags:
+######################################################################################### 
+
+# Decomposition Assays: 
+## Leaf Data Processing 
+###  Summary
+This pipeline processes data on leaf mass loss, dry mass (DM), ash-free dry mass (AFDM), percent N and P, and like ni the previous pipeline generates kD and kT for leaf litter as well as temperature-normalized stoichiometric changes in litter.
+
+
+#### M~t~/M~0~ = e^-kt
+
+Where M represents the mass of organic matter in leaf litter measured as AFDM, M~t~ is mass at time t, and M~0~ is the mean mass of undecomposed leaves can be used to estimate decomposition as an exponential decay constant, *k~D~*.
+
+#### k~D~= -ln(M~t~/M~0~)/t
+
+Additionally, we have *temperature data from STIC sensors at each of the 12 locations* where leaf litter was incubated. In a separate pipeline, I used temperature data from each STIC over to generate average temperatures for each incubation period at each STIC, which will allow us to calculate temperature-normalized decay constants. The following derivation of k~T~ assumes a linear effect of temperature on decomposition rates, but note that oter models are also possible:
+
+#### k~T~ = -ln(M~t~/M~0~) / ((1/T~R~) * T~avg~ * t)
+
+Using the formulas above, we will calculate TSL, k~D~, and k~T~ of leaf bag decomposition assays belonging to different treatment groups.
+
+### Leaf mass loss data
+
+```{r}
+### ergosterol + CNP AFDM and leaf mass loss data
+ergotab<- read.csv("CNPAFDMtab.csv")
+
+LLtest<- ergotab[ergotab$Substrate=='LL',]
+
+```
+
+Identify controls used for initial stoichiometry, and estimate AFDM loss.
+```{r}
+LLcontrols<- LLtest[LLtest$ergo_control==1,]
+
+## calculated  mean proportion of dry mass remaining after leaching in controls
+pleach<- mean(LLcontrols$remaining_drymass/LLcontrols$initial_drymass)
+## 87.6%
+
+LL_exp<- LLtest[LLtest$ergo_control==0,]
+
+## adjust initial dry mass of deployed leaf bags by leaching lost
+LL_exp$initial_drymass<- (LL_exp$initial_drymass)*pleach
+
+## Summary of initial dry masses after leaching losses
+summary(LL_exp$initial_drymass)
+
+# Now, let's estimate dry mass lost
+LL_exp$delta_drymass<- LL_exp$initial_drymass - LL_exp$remaining_drymass
+summary(LL_exp$delta_drymass) ## note that sediment deposition may lead to incrase dry mass, which we account for with AFDM next
+
+###### estimating change in AFDM 
+## calculated  mean proportion of dry mass remaining after leaching in controls
+pafdm<- mean(LLcontrols$AFDM_prc)
+## 87.6%
+
+## convert post-leaching initial dry mass to initial AFDM in deployed bags
+LL_exp$initial_AFDM<- (LL_exp$initial_drymass)*pafdm ### 
+### calculate remaining AFDM using bag-specific endpoint AFDM
+LL_exp$remaining_AFDM<- (LL_exp$initial_drymass)*LL_exp$AFDM_prc
+
+LL_exp$prc_AFDM_remaining<- LL_exp$remaining_AFDM/LL_exp$initial_AFDM
+summary(LL_exp$prc_AFDM_remaining)
+```
+
+Now we have most of what wee need to estimate k for leaf litter, just need to merge incubation time from the cotton strip table:
+```{r}
+## extracting incubation days from TS dataset
+timetest<- TStest[,c(1:5,7)]
+timetest<-distinct(timetest, .keep_all = FALSE)
+
+## merging incubation time to leaf data
+LL_expt<- merge(LL_exp, timetest, by='Site_time') 
+```
+
+## Leaf litter kD and kT
+
+```{r}
+## note, default for log() in base R in natural log
+LL_expt$kD_LL <- -log(LL_expt$prc_AFDM_remaining)/LL_expt$Incubation.days
+summary(LL_expt$kD_LL)
+
+```
+
+### Contrast Leaf kD
+    Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+-0.001574  0.001136  0.004500  0.005764  0.009057  0.026068
+
+### with the generally higher cotton strip kD:
+     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+-0.003977  0.003273  0.015964  0.026410  0.042241  0.126903 
+
+Now to load and merge temperature data
+```{r}
+library(tidyverse)
+STIC_test <- read.csv("decomp_STICstats_summaries.csv")
+STIC_test$Site_time <- paste(STIC_test$Site, STIC_test$time, sep="")
+
+LL_expt<- merge(LL_expt, STIC_test[,4:9], by='Site_time')
+```
+
+Estimating k~T~ for leaf litter
+```{r}
+Tr<- 1
+LL_expt$kT_LL<- -log(LL_expt$prc_AFDM_remaining)/((1/Tr)*(LL_expt$mean_temp)*(LL_expt$Incubation.days))
+
+summary(LL_expt$kT)
+LL_expt$kT
+```
+
+Voila, we have TSL, k~D~, and k~T~ 
+```{r}
+write.csv(LL_expt, "LL_decomp_full_03.30.2025.csv")
+```
+
+
+Now that we have estimated k for leaf and cotton, let's estimate changes in substrate stoichiometry (C:N:P) over the experiment!
+
+Starting is Phosphorus (P)
+
+### changes in P
+
+Lea
+
+We'll start with leaf litter as that will continue using the objects we used to calculate k. Cotton strip replicates used for C:N:P (n=3) were not the same units used for tensile strength (n=5) so we'll have to modify that a bit.
+
+First, Leaf P.
+
+#### Leaf litter Phosphorus:
+```{r}
+
+## calculated mean initial Phosphorus as a proportion of AFDM after leaching in controls
+pPhos<- mean(LLcontrols$P_prc_of_DM/LLcontrols$AFDM_prc)
+pPhos
+summary(LL_expt$P_prc_of_DM)
+
+LL_expt$P_prc_of_AFDM <- LL_expt$P_prc_of_DM/LL_expt$AFDM_prc
+summary(LL_expt$P_prc_of_AFDM)
+
+LL_expt$dP_prc_afdm<- LL_expt$P_prc_of_AFDM-pPhos
+
+### Positive values represent P immobilization (accumulation in biomass) while negative values represent loss of P from leaf litter.
+summary(LL_expt$dP_prc_afdm)
+sum(LL_expt$dP_prc_afdm>0)
+### Most leaf litter lost P as a percent of AFDM, while only four samples positive accumulation of P.
+write.csv(LL_expt, "LL_decomp_fullwP_04.02.2025.csv")
+```
+After I get complete C:N:P data, I will estimate N and P mobilization / immobilization following Costello et al: https://github.com/dmcostello/CELLDEX_nutrients/blob/main/immob_calc.Rmd 
+
+
+## Cotton strip P
+```{r}
+### ergosterol + CNP AFDM and leaf mass loss data
+ergotab<- read.csv("CNPAFDMtab.csv")
+CStest<- ergotab[ergotab$Substrate=='CS',]
+CScontrols<- CStest[CStest$ergo_control==1,]
+CS_exp<- CStest[CStest$ergo_control==0,]
+## extracting incubation days from TS dataset
+timetest<- TStest[,c(1:5,7)]
+timetest<-distinct(timetest, .keep_all = FALSE)
+## merging incubation time to stoichiometry data
+CS_expt<- merge(CS_exp, timetest, by='Site_time') 
+```
+
+```{r}
+## calculated mean initial Phosphorus as a proportion of AFDM after leaching in controls
+cPhos<- mean(CScontrols$P_prc_of_DM/CScontrols$AFDM_prc)
+cPhos
+summary(CS_expt$P_prc_of_DM)
+
+CS_expt$P_prc_of_AFDM <- CS_expt$P_prc_of_DM/CS_expt$AFDM_prc
+summary(CS_expt$P_prc_of_AFDM)
+
+CS_expt$dP_prc_afdm<- CS_expt$P_prc_of_AFDM-cPhos
+
+### Positive values represent P immobilization (accumulation in biomass) while negative values represent loss of P from leaf litter.
+summary(CS_expt$dP_prc_afdm)
+sum(CS_expt$dP_prc_afdm>0)
+### Most leaf litter lost P as a percent of AFDM, while only four samples positive accumulation of P.
+write.csv(CS_expt, "CS_decomp_fullwP_04.02.2025.csv")
+```
