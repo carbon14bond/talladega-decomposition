@@ -1,0 +1,392 @@
+---
+title: "Dissolved_nutrients_wdecomp"
+author: "Charles T. Bond"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+##  Summary
+This pipeline is for processing dissolved oxygen sensor data.
+
+### Setup
+```{r setup, include=FALSE}
+options(knitr.duplicate.label = "allow")
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/chunk/Chapter_III_Decomp_assays/data_processing/nutrient_waterqual")
+
+
+```
+
+It loads the package before it begins or else it gets the error again
+```{r, library}
+library(tidyverse)
+library(scales)
+library(lubridate)
+```
+
+
+## Load dissolved oxygen sensor data
+```{r}
+disnutr <- read.csv("/Users/chunk/Chapter_III_Decomp_assays/data_processing/nutrient_waterqual/NUTR_SE_approach4_20220616_20220809_V1.0.csv")
+```
+
+Now that we've loaded in the dissolved nutrient data, it is important to remember the design of the study. `Seperately from the decomposition study,` representative sampling of microbes and dissolved nutrients occured at five transcts in each reach. These transects only partially overlapped with decomposition sites. One water sampling transect in each reach occured around each decomposition site, and at least one water sampling transect was inbetween the decomposition sites in each reach, so n=3 (the two proximal and one inbetween sensor), gives the closest estimation of dissolved nutrients within each reach overall, while the nutrient transect closest to each decomposition site may be used to appoximate dissolved nutients at each decomposition site. 
+
+### for reach averages, select n=3 sites. 
+```{r}
+disnutrim<- disnutr
+#disnutrim<- disnutr[disnutr$siteId=="TLMD3"|disnutr$siteId=="TLMD4"|disnutr$siteId=="TLMD5"|disnutr$siteId=="TLMR1"|disnutr$siteId=="TLMR3"|disnutr$siteId=="TLMR5",]
+
+disnutrim$Treatment<- ifelse(disnutrim$siteId=="TLMD1"|disnutrim$siteId=="TLMD2"|disnutrim$siteId=="TLMD3"|disnutrim$siteId=="TLMD4"|disnutrim$siteId=="TLMD5","Impact","Control")
+
+## a couple non-essential dates have incomplete data, e.g., the day the dam was connected was only top and bottom of each reach.
+#disnutrim<- disnutrim[disnutrim$notes!="dam connected",]
+#disnutrim<- disnutrim[disnutrim$notes!="1 week connected",]
+#disnutrim<- disnutrim[disnutrim$notes!="3 week connected",]
+```
+
+now produce table of mean/SD dissolved nutrients by treatment, i.e., reach and timepoint
+```{r}
+
+nutrtab <- disnutrim %>%
+  group_by(Treatment, date) %>%
+  summarise(#date=date,
+            #Treatment=Treatment,
+            #phase=notes,
+    SRPugL = mean(SRPugL),
+    sdSRPugL = mean(SRPstd),
+    NH4ugL = mean(NH4ugL),
+    sdNH4ugL = mean(NH4std),
+    NO3NO2ugL = mean(NO3NO2ugL),
+    sdNO3NO2ugL = mean(NO3NO2std)
+  )
+nutrtab
+
+```
+
+
+```{r}
+dam_day<- as.POSIXct("2022-06-27")
+undam_day<- as.POSIXct("2022-07-25")
+tcol<- c("cornflowerblue","brown1")
+
+nutrtab$date<- as.POSIXct(as.Date(as.character(nutrtab$date),"%Y%m%d"))
+
+dis_SRP <- ggplot(nutrtab, aes(x=date, y=SRPugL, fill=Treatment))+
+    geom_bar(position=position_dodge(80000), stat="identity",
+           colour='black')+
+  ylim(-1.5,16)+
+  scale_fill_manual(values = tcol)+
+    geom_errorbar(aes(ymin=SRPugL-sdSRPugL, ymax=SRPugL+sdSRPugL),#, colour = Treatment), 
+                  position=position_dodge(80000), width=.8)+
+  #  scale_color_manual(values = tcol)+
+   geom_vline(xintercept = dam_day, linetype="dotted", size = 0.4) +   geom_vline(xintercept = undam_day+hours(6), linetype="dotted", size = 0.4) +
+  annotate('text', x=dam_day, y=14.5, label = "\nFlow diversion",  angle=90, size=3)+
+  annotate('text', x=undam_day+hours(6), y=14.5, label = "\nFlow restoration",  angle=90, size=3)
+dis_SRP
+
+t1min<- as.POSIXct("2022-06-07 18:00:00", tz="UTC")
+t1mid<- as.POSIXct("2022-06-27 18:00:00", tz="UTC") - days(10) 
+t1max<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+
+t2amin<- as.POSIXct("2022-06-22 18:00:00", tz="UTC")
+t2amid<- as.POSIXct("2022-07-12 18:00:00", tz="UTC") - days(10) 
+t2amax<- as.POSIXct("2022-07-12 18:00:00", tz="UTC")
+
+t2bmin<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
+t2bmid<- as.POSIXct("2022-07-22 6:00:00", tz="UTC") - days(12) 
+t2bmax<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+
+t3min<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
+t3mid<- as.POSIXct("2022-08-12 6:00:00", tz="UTC") - days(10)
+t3max<- as.POSIXct("2022-08-12 18:00:00", tz="UTC")
+
+dis_SRP_annotated <- dis_SRP+
+  ## t1
+    annotate('rect', xmin = t1min, xmax = t1max, ymin = -0.75, ymax = 0, alpha = 0.7, fill = 'blue', col = 'black')+
+  annotate('text', x=t1mid , y=-0.375, label = "t1", size=2.5)+
+  ## t2a
+    annotate('rect', xmin = t2amin, xmax = t2amax, ymin = -1.5, ymax = -0.75, alpha = 0.7, fill = 'yellow', col = 'black')+
+  annotate('text', x=t2amid , y=-1.125, label = "t2a",   size=2.5)+
+  ## t2b
+    annotate('rect', xmin = t2bmin, xmax = t2bmax, ymin = -0.75, ymax = 0, alpha = 0.7, fill = 'red', col = 'black')+
+  annotate('text', x=t2bmid , y=-0.375, label = "t2b",   size=2.5)+
+  ## t3
+    annotate('rect', xmin = t3min, xmax = t3max, ymin = -0.75, ymax = 0, alpha = 0.7, fill = 'green', col = 'black')+
+  annotate('text', x=t3mid , y=-0.375, label = "t3",   size=2.5)
+dis_SRP_annotated 
+
+library(ragg)
+plotout <- "decomp_phase_SRP.tiff"
+agg_tiff(filename=plotout, width=4200, height=2000, units="px",
+         pointsize=10, res=600, compression="lzw", scaling=0.5)
+dis_SRP_annotated
+#plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
+invisible(dev.off())
+
+```
+
+NH4
+```{r}
+
+#nutrtab$date<- as.POSIXct(as.Date(as.character(nutrtab$date),"%Y%m%d"))
+nutrtab$NH4ugL
+
+dis_NH4 <- ggplot(nutrtab, aes(x=date, y=NH4ugL, fill=Treatment))+
+    geom_bar(position=position_dodge(80000), stat="identity",
+           colour='black')+
+  ylim(-4,45)+
+  scale_fill_manual(values = tcol)+
+    geom_errorbar(aes(ymin=NH4ugL-sdNH4ugL, ymax=NH4ugL+sdNH4ugL),#, colour = Treatment), 
+                  position=position_dodge(80000), width=.8)+
+  #  scale_color_manual(values = tcol)+
+   geom_vline(xintercept = dam_day, linetype="dotted", size = 0.4) +   geom_vline(xintercept = undam_day+hours(6), linetype="dotted", size = 0.4) +
+  annotate('text', x=dam_day, y=39, label = "\nFlow diversion",  angle=90, size=3)+
+  annotate('text', x=undam_day+hours(6), y=39, label = "\nFlow restoration",  angle=90, size=3)
+dis_NH4
+
+dis_NH4_annotated <- dis_NH4+
+  ## t1
+    annotate('rect', xmin = t1min, xmax = t1max, ymin = -2, ymax = 0, alpha = 0.7, fill = 'blue', col = 'black')+
+  annotate('text', x=t1mid , y=-1, label = "t1", size=2.5)+
+  ## t2a
+    annotate('rect', xmin = t2amin, xmax = t2amax, ymin = -4, ymax = -2, alpha = 0.7, fill = 'yellow', col = 'black')+
+  annotate('text', x=t2amid , y=-3, label = "t2a",   size=2.5)+
+  ## t2b
+    annotate('rect', xmin = t2bmin, xmax = t2bmax, ymin = -2, ymax = 0, alpha = 0.7, fill = 'red', col = 'black')+
+  annotate('text', x=t2bmid , y=-1, label = "t2b",   size=2.5)+
+  ## t3
+    annotate('rect', xmin = t3min, xmax = t3max, ymin = -2, ymax = 0, alpha = 0.7, fill = 'green', col = 'black')+
+  annotate('text', x=t3mid , y=-1, label = "t3",   size=2.5)
+dis_NH4_annotated 
+
+library(ragg)
+plotout <- "decomp_phase_NH4.tiff"
+agg_tiff(filename=plotout, width=4200, height=2000, units="px",
+         pointsize=10, res=600, compression="lzw", scaling=0.5)
+dis_NH4_annotated
+#plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
+invisible(dev.off())
+
+```
+
+NO3NO2
+```{r}
+
+#nutrtab$date<- as.POSIXct(as.Date(as.character(nutrtab$date),"%Y%m%d"))
+nutrtab$NO3NO2ugL
+
+dis_NO3NO2 <- ggplot(nutrtab, aes(x=date, y=NO3NO2ugL, fill=Treatment))+
+    geom_bar(position=position_dodge(80000), stat="identity",
+           colour='black')+
+  ylim(-4,40)+
+  scale_fill_manual(values = tcol)+
+    geom_errorbar(aes(ymin=NO3NO2ugL-sdNO3NO2ugL, ymax=NO3NO2ugL+sdNO3NO2ugL),#, colour = Treatment), 
+                  position=position_dodge(80000), width=.8)+
+  #  scale_color_manual(values = tcol)+
+   geom_vline(xintercept = dam_day, linetype="dotted", size = 0.4) +   geom_vline(xintercept = undam_day+hours(6), linetype="dotted", size = 0.4) +
+  annotate('text', x=dam_day, y=34, label = "\nFlow diversion",  angle=90, size=3)+
+  annotate('text', x=undam_day+hours(6), y=34, label = "\nFlow restoration",  angle=90, size=3)
+dis_NO3NO2
+
+dis_NO3NO2_annotated <- dis_NO3NO2+
+  ## t1
+    annotate('rect', xmin = t1min, xmax = t1max, ymin = -2, ymax = 0, alpha = 0.7, fill = 'blue', col = 'black')+
+  annotate('text', x=t1mid , y=-1, label = "t1", size=2.5)+
+  ## t2a
+    annotate('rect', xmin = t2amin, xmax = t2amax, ymin = -4, ymax = -2, alpha = 0.7, fill = 'yellow', col = 'black')+
+  annotate('text', x=t2amid , y=-3, label = "t2a",   size=2.5)+
+  ## t2b
+    annotate('rect', xmin = t2bmin, xmax = t2bmax, ymin = -2, ymax = 0, alpha = 0.7, fill = 'red', col = 'black')+
+  annotate('text', x=t2bmid , y=-1, label = "t2b",   size=2.5)+
+  ## t3
+    annotate('rect', xmin = t3min, xmax = t3max, ymin = -2, ymax = 0, alpha = 0.7, fill = 'green', col = 'black')+
+  annotate('text', x=t3mid , y=-1, label = "t3",   size=2.5)
+dis_NO3NO2_annotated 
+
+library(ragg)
+plotout <- "decomp_phase_NO3NO2.tiff"
+agg_tiff(filename=plotout, width=4200, height=2000, units="px",
+         pointsize=10, res=600, compression="lzw", scaling=0.5)
+dis_NO3NO2_annotated
+#plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
+invisible(dev.off())
+
+```
+
+
+```{r}
+library(cowplot)
+
+bigp<- plot_grid(dis_SRP_annotated , dis_NH4_annotated , dis_NO3NO2_annotated , labels=NA, ncol=1)
+bigp
+
+plotout <- "decomp_nutrients.tiff"
+agg_tiff(filename=plotout, width=2500, height=4000, units="px",
+         pointsize=10, res=600, compression="lzw", scaling=0.5)
+bigp
+#plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
+invisible(dev.off())
+
+```
+
+```{r}
+Ctab <- disnutrim[disnutrim$Treatment=="Control",] %>%
+  group_by(date) %>%
+  summarise(
+    SRPugLC = mean(SRPugL),
+    sdSRPugLC = mean(SRPstd),
+    NH4ugLC = mean(NH4ugL),
+    sdNH4ugLC = mean(NH4std),
+    NO3NO2ugLC = mean(NO3NO2ugL),
+    sdNO3NO2ugLC = mean(NO3NO2std)
+  )
+Ctab
+
+Itab<- disnutrim[disnutrim$Treatment=="Impact",] %>%
+  group_by(date) %>%
+  summarise(
+    SRPugLI = mean(SRPugL),
+    sdSRPugLI = mean(SRPstd),
+    NH4ugLI = mean(NH4ugL),
+    sdNH4ugLI = mean(NH4std),
+    NO3NO2ugLI = mean(NO3NO2ugL),
+    sdNO3NO2ugLI = mean(NO3NO2std)
+  )
+Itab
+
+CI_tab<- merge(Ctab, Itab, by="date")
+
+CI_tab$period<- ifelse(CI_tab$date==20220616, "Before",NA)
+CI_tab$period<- ifelse(CI_tab$date==20220628, "After_d1",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220705, "After_wk1",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220712, "After_wk2",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220719, "After_wk3",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220725, "After_wk4",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220726, "Recovery_d1",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220730, "Recovery_d5",CI_tab$period)
+CI_tab$period<- ifelse(CI_tab$date==20220809, "Recovery_wk2",CI_tab$period)
+CI_tab$period<- factor(CI_tab$period, levels=c("Before","After_d1","After_wk1","After_wk2","After_wk3","After_wk4","Recovery_d1","Recovery_d5","Recovery_wk2"))
+
+lmtest<- summary(lm(SRPugLI~SRPugLC, data=CI_tab))
+lmtest
+CI_SRP <- ggplot(CI_tab, aes(x=SRPugLC, y=SRPugLI, colour=period))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 3))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_SRP
+
+lmtest<- summary(lm(NH4ugLI~NH4ugLC, data=CI_tab))
+lmtest
+CI_NH4 <- ggplot(CI_tab, aes(x=NH4ugLC, y=NH4ugLI, colour=period))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 3))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_NH4
+
+lmtest<- summary(lm(NO3NO2ugLI~NO3NO2ugLC, data=CI_tab))
+lmtest
+CI_NO3NO2 <- ggplot(CI_tab, aes(x=NO3NO2ugLC, y=NO3NO2ugLI, colour=period))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 3))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_NO3NO2
+
+```
+
+```{r}
+### check is nutrient data satisfy parametric assumptionms
+##### Trying with nonparametric Kruskal Wallis test
+disnutrim<- disnutrim %>% mutate(Treatment_time = paste(Treatment, date, sep = '_'))
+## a couple non-essential dates have incomplete data, e.g., the day the dam was connected was only top and bottom of each reach.
+disnutrim<- disnutrim[disnutrim$notes!="dam connected",]
+disnutrim<- disnutrim[disnutrim$notes!="1 week connected",]
+disnutrim<- disnutrim[disnutrim$notes!="3 week connected",]
+
+################################ NH4
+shapiro_test <- disnutrim %>%
+  group_by(as.factor(Treatment_time)) %>%
+  summarize(p_value = shapiro.test(NH4ugL)$p.value)
+shapiro_test
+levene_test1 <- disnutrim %>%
+  rstatix::levene_test(NH4ugL~Treatment_time)
+levene_test1
+# Awesome, NH4 is normal and has equal variance between levels
+
+disnutrim$date<- as.factor(disnutrim$date)
+disnutrim$Treatment<- as.factor(disnutrim$Treatment)
+
+library(multcompView)
+BACI_NH4_aov<- aov(NH4ugL~Treatment*date,data=disnutrim)
+summary(BACI_NH4_aov) ### significant interaction
+tukey<- TukeyHSD(BACI_NH4_aov)
+tukey
+# compact letter display
+cld <- multcompLetters4(BACI_NH4_aov, tukey)
+cld$`Treatment:date`
+
+
+################################ NO3/NO2
+shapiro_test <- disnutrim %>%
+  group_by(as.factor(Treatment_time)) %>%
+  summarize(p_value = shapiro.test(log(NO3NO2ugL))$p.value)
+shapiro_test
+levene_test1 <- disnutrim %>%
+  rstatix::levene_test(log(NO3NO2ugL)~Treatment_time)
+levene_test1
+# Awesome, log-tranformed NO3+NO2 is normal and has equal variance between levels
+
+library(multcompView)
+BACI_NO3NO2ugL_aov<- aov(log(NO3NO2ugL)~Treatment*date,data=disnutrim)
+summary(BACI_NO3NO2ugL_aov) ### significant interaction
+tukey<- TukeyHSD(BACI_NO3NO2ugL_aov)
+tukey
+# compact letter display
+cld <- multcompLetters4(BACI_NO3NO2ugL_aov, tukey)
+cld$`Treatment:date`
+
+
+################################ SRP
+# Shapiro-Wilk test for normality
+shapiro_test <- disnutrim %>%
+  group_by(as.factor(Treatment_time)) %>%
+  summarize(p_value = shapiro.test(SRPugL)$p.value)
+shapiro_test
+
+## Control_20220809 is non-normal, try log-scale
+shapiro_test <- disnutrim %>%
+  group_by(as.factor(Treatment_time)) %>%
+  summarize(p_value = shapiro.test(sqrt(SRPugL))$p.value)
+shapiro_test
+## NA, still non-parametric
+#################
+kruskal.test(SRPugL~Treatment_time,data=disnutrim)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(SRPugL~Treatment_time,data=disnutrim, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
+
+
+```
