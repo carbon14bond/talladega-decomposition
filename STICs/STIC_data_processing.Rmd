@@ -1,7 +1,7 @@
 ---
 title: "STICr_TAL_DD"
 author: "Charles Bond"
-date: "10/18/2024"
+date: "10/18/2024, updated 07/21/2025"
 output: html_document
 ---
 # AIMS Southeastern Flow Manipulation Experiment:
@@ -776,7 +776,7 @@ dd_allstics$wetdry_bin <- as.numeric(dd_allstics$wetdry_bin)-1
 ```{r}
 
 #dd_allstics
-t1stics <- dd_allstics[dd_allstics$datetime> as.POSIXct("2022-06-08 04:45:00", tz="UTC") & dd_allstics$datetime< as.POSIXct("2022-06-27 05:00:00", tz="UTC"),]
+t1stics <- dd_allstics[dd_allstics$datetime> as.POSIXct("2022-06-07 04:45:00", tz="UTC") & dd_allstics$datetime< as.POSIXct("2022-06-27 05:00:00", tz="UTC"),]
 #t1stics <- date_test[date_test$datetime > as.POSIXct("2022-06-07 23:45:00", tz="UTC") & date_test$datetime < as.POSIXct("2022-06-07 23:45:00", tz="UTC")
 t1_temp <- ggplot(t1stics, aes(x=datetime, y=tempC, col=wetdry, shape=Treatment))+
     geom_point(size=0.2)+
@@ -839,6 +839,24 @@ t3_stic_summmary
 
 ```
 
+
+#### T1-T3
+```{}
+
+#dd_allstics
+tallstics <- dd_allstics[dd_allstics$datetime> as.POSIXct("2022-06-07 04:45:00", tz="UTC") & dd_allstics$datetime< as.POSIXct("2022-08-12 05:00:00", tz="UTC"),]
+
+tall_temp <- ggplot(tallstics, aes(x=datetime, y=tempC, col=wetdry, shape=Treatment))+
+    geom_point(size=0.2)+
+    facet_wrap(~Site, nr=3)+
+     geom_smooth(method='loess', col='black', aes(group=Habitat, linetype=Habitat))
+tall_temp
+
+#t1_stic_summmary <- t1stics %>% group_by(Site) %>% summarize(time="t1",mean_temp=mean(tempC), sd_temp=sd(tempC), mean_SpC=mean(SpC), sd_SpC=sd(SpC), prc_wet=mean(wetdry_bin))
+#t1_stic_summmary
+
+```
+
 ```{r}
 stic_decomptime_summaries<- rbind(t1_stic_summmary,t2a_stic_summmary,t2b_stic_summmary,t3_stic_summmary)
 write.csv(stic_decomptime_summaries, "decomp_STICstats_summaries.csv")
@@ -850,22 +868,37 @@ Make STIC sensor data plots with markers for T1-T3 and dam activation/release, i
 ### 
 all_t_stics <- dd_allstics[dd_allstics$datetime> as.POSIXct("2022-06-06 04:45:00", tz="UTC") & dd_allstics$datetime< as.POSIXct("2022-08-13 05:00:00", tz="UTC"),]
 
-all_t_stics <- all_t_stics[all_t_stics$Habitat!='riparian',]
+#all_t_stics <- all_t_stics[all_t_stics$Habitat!='riparian',]
 
 dam_day<- as.POSIXct("2022-06-27 18:00:00", tz="UTC")
 undam_day<- as.POSIXct("2022-07-25 19:00:00", tz="UTC")
-tcol<- c("cornflowerblue","brown1")
+tcol<- c("brown1","cornflowerblue")
 
-#library(tidyquant)
+
+lblr = labeller(Site = 
+    c("IP1" = "Impact pool, downstream",
+      "IP2" = "Impact pool, upstream",
+      "IR1" = "Impact riffle, downstream",
+      "IR2" = "Impact riffle, upstream",
+      "CP1" = "Control pool, downstream",
+      "CP2" = "Control pool, upstream",
+      "CR1" = "Control riffle, downstream",
+      "CR2" = "Control riffle, upstream",
+      "IT1" = "Control riparian, downstream",
+      "IT2" = "Control riparian, upstream",
+      "CT1" = "Control riparian, downstream",
+      "CT2" = "Control riparian, upstream"))
+
 all_t_temp <- ggplot(all_t_stics, aes(x=datetime, y=tempC, col=wetdry))+
     geom_point(size=0.2)+
   scale_shape_manual(values=1)+
-    facet_wrap(Habitat~Treatment, nr=2)+
+    facet_wrap(~Site, nr=3, labeller = lblr)+
   #geom_ma(ma_fun = SMA, n = 192, color="black", linewidth=0.1, linetype='dashed') + 
      geom_smooth(method='gam', col='black' #, aes(group=Habitat, linetype=Habitat)
                  )+
   scale_color_manual(values = tcol)
 all_t_temp
+
 
 t1min<- as.POSIXct("2022-06-07 18:00:00", tz="UTC")
 t1mid<- as.POSIXct("2022-06-27 18:00:00", tz="UTC") - days(10) 
@@ -882,6 +915,7 @@ t2bmax<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
 t3min<- as.POSIXct("2022-07-22 18:00:00", tz="UTC")
 t3mid<- as.POSIXct("2022-08-12 6:00:00", tz="UTC") - days(10)
 t3max<- as.POSIXct("2022-08-12 18:00:00", tz="UTC")
+
 
 all_t_temp_annotated <- all_t_temp+
   aes(ymin=0, ymax=30)+
@@ -904,8 +938,8 @@ all_t_temp_annotated <- all_t_temp+
 all_t_temp_annotated
 
 library(ragg)
-plotout <- "Stream_temperature.tiff"
-agg_tiff(filename=plotout, width=4200, height=2000, units="px",
+plotout <- "Stream_temperature_07152025.tiff"
+agg_tiff(filename=plotout, width=3000, height=2000, units="px",
          pointsize=10, res=600, compression="lzw", scaling=0.5)
 all_t_temp_annotated
 #plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
@@ -977,6 +1011,211 @@ agg_tiff(filename=plotout, width=4200, height=2000, units="px",
 all_t_SPC_annotated
 #plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
 invisible(dev.off())
+
+```
+
+
+
+```{r}
+### calculating daily values for each STIC
+####### t1
+t1_balanced <- t1stics %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Site, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_instream_temp_C = mean(tempC, na.rm = TRUE),
+    Diel_instream_change = max(tempC, na.rm = TRUE) - min(tempC, na.rm = TRUE)
+  )
+t1_balanced
+
+t1_summary<- t1_balanced %>%
+    group_by(Site) %>%
+              summarise(timeperiod="t1",
+                Mean_daily_instream_temp_C=mean(Daily_avg_instream_temp_C),
+                        SD_daily_instream_temp_C=sd(Daily_avg_instream_temp_C),
+                        Mean_instream_diel_temp_C=mean(Diel_instream_change),
+                        SD_instream_diel_temp_C=sd(Diel_instream_change)
+                        )
+t1_summary
+
+####### t2a
+t2a_balanced <- t2astics %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Site, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_instream_temp_C = mean(tempC, na.rm = TRUE),
+    Diel_instream_change = max(tempC, na.rm = TRUE) - min(tempC, na.rm = TRUE)
+  )
+t2a_balanced
+
+t2a_summary<- t2a_balanced %>%
+    group_by(Site) %>%
+              summarise(timeperiod="t2a",
+                Mean_daily_instream_temp_C=mean(Daily_avg_instream_temp_C),
+                        SD_daily_instream_temp_C=sd(Daily_avg_instream_temp_C),
+                        Mean_instream_diel_temp_C=mean(Diel_instream_change),
+                        SD_instream_diel_temp_C=sd(Diel_instream_change)
+                        )
+t2a_summary
+
+####### t2b
+t2b_balanced <- t2bstics %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Site, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_instream_temp_C = mean(tempC, na.rm = TRUE),
+    Diel_instream_change = max(tempC, na.rm = TRUE) - min(tempC, na.rm = TRUE)
+  )
+t2b_balanced
+
+t2b_summary<- t2b_balanced %>%
+    group_by(Site) %>%
+              summarise(timeperiod="t2b",
+                Mean_daily_instream_temp_C=mean(Daily_avg_instream_temp_C),
+                        SD_daily_instream_temp_C=sd(Daily_avg_instream_temp_C),
+                        Mean_instream_diel_temp_C=mean(Diel_instream_change),
+                        SD_instream_diel_temp_C=sd(Diel_instream_change)
+                        )
+t2b_summary
+
+####### t3
+t3_balanced <- t3stics %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Site, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_instream_temp_C = mean(tempC, na.rm = TRUE),
+    Diel_instream_change = max(tempC, na.rm = TRUE) - min(tempC, na.rm = TRUE)
+  )
+t3_balanced
+
+t3_summary<- t3_balanced %>%
+    group_by(Site) %>%
+              summarise(timeperiod="t3",
+                Mean_daily_instream_temp_C=mean(Daily_avg_instream_temp_C),
+                        SD_daily_instream_temp_C=sd(Daily_avg_instream_temp_C),
+                        Mean_instream_diel_temp_C=mean(Diel_instream_change),
+                        SD_instream_diel_temp_C=sd(Diel_instream_change)
+                        )
+t3_summary
+
+TAL_DD_temp_all_STICs<- rbind(t1_summary,t2a_summary,t2b_summary,t3_summary)
+TAL_DD_temp_all_STICs
+write.csv(TAL_DD_temp_all_STICs, "TAL_DD_instream_STICtemp_summaries_06.24.2025.csv")
+```
+
+Above we have values calculated for each STIC X period. Below we combine all in-stream STICs for combine averages by treatment (i.e., two riffles and two pools per reach)
+```{r}
+TAL_DD_temp_all_STICs$Habitat<-ifelse(TAL_DD_temp_all_STICs$Site=="IP1"|TAL_DD_temp_all_STICs$Site=="IP2"|TAL_DD_temp_all_STICs$Site=="CP1"|TAL_DD_temp_all_STICs$Site=="CP2","Pool",NA)
+TAL_DD_temp_all_STICs$Habitat<-ifelse(TAL_DD_temp_all_STICs$Site=="IR1"|TAL_DD_temp_all_STICs$Site=="IR2"|TAL_DD_temp_all_STICs$Site=="CR1"|TAL_DD_temp_all_STICs$Site=="CR2","Riffle",TAL_DD_temp_all_STICs$Habitat)
+TAL_DD_temp_all_STICs$Habitat<-ifelse(TAL_DD_temp_all_STICs$Site=="IT1"|TAL_DD_temp_all_STICs$Site=="IT2"|TAL_DD_temp_all_STICs$Site=="CT1"|TAL_DD_temp_all_STICs$Site=="CT2","Riparian",TAL_DD_temp_all_STICs$Habitat)
+
+TAL_DD_temp_all_STICs
+
+### Remove riparian
+TAL_DD_temp_instream_STICs<-TAL_DD_temp_all_STICs[TAL_DD_temp_all_STICs$Habitat!="Riparian",]
+TAL_DD_temp_instream_STICs
+
+TAL_DD_temp_instream_STICs$Treatment<-ifelse(TAL_DD_temp_instream_STICs$Site=="IP1"|TAL_DD_temp_instream_STICs$Site=="IP2"|TAL_DD_temp_instream_STICs$Site=="IR1"|TAL_DD_temp_instream_STICs$Site=="IR2","Impact","Control")
+
+TAL_DD_temp_instream_STICs
+
+
+instream_summary<- TAL_DD_temp_instream_STICs %>%
+    group_by(Treatment, timeperiod) %>%
+              summarise(
+                Mean_daily_instream_temp_C=mean(Mean_daily_instream_temp_C),
+                        SD_daily_instream_temp_C=mean(SD_daily_instream_temp_C),
+                        Mean_instream_diel_temp_C=mean(Mean_instream_diel_temp_C),
+                        SD_instream_diel_temp_C=mean(SD_instream_diel_temp_C)
+                        )
+instream_summary
+
+write.csv(instream_summary, "TAL_DD_instream_summarytab_06.24.2025.csv")
+
+```
+
+
+```{r}
+
+##### Trying with nonparametric Kruskal Wallis test
+tperiod_bound<- TAL_DD_temp_instream_STICs %>% mutate(Treatment_time = paste(Treatment, timeperiod, sep = '_'))
+#tperiod_bound<-tperiod_bound[tperiod_bound$timeperiod!="t2a",]
+
+## First check shapiro wilk goodness of fit for normality test
+# Shapiro-Wilk test for normality
+shapiro_test <- tperiod_bound %>%
+  group_by(Treatment, timeperiod) %>%
+  summarize(p_value = shapiro.test(Mean_daily_instream_temp_C)$p.value)
+shapiro_test
+### Good, temp. data is normal 
+
+levene_test1 <- tperiod_bound %>%
+  group_by(timeperiod) %>%
+  rstatix::levene_test(Mean_daily_instream_temp_C~Treatment)
+levene_test1
+## Lacks equal variance, checking log transformation...
+
+
+tperiod_bound$logMDT<- log(tperiod_bound$Mean_daily_instream_temp_C)
+shapiro_test <- tperiod_bound %>%
+  group_by(Treatment, timeperiod) %>%
+  summarize(p_value = shapiro.test(logMDT)$p.value)
+shapiro_test
+### Good, temp. data is normal 
+
+levene_test1 <- tperiod_bound %>%
+  group_by(timeperiod) %>%
+  rstatix::levene_test(logMDT~Treatment)
+levene_test1
+### ## Lacks equal variance, going with non-parametric test
+
+library(multcompView)
+#BACI_temp_aov<- aov(Mean_daily_instream_temp_C~Treatment*timeperiod,data=tperiod_bound)
+#summary(BACI_temp_aov)
+#tukey<- TukeyHSD(BACI_temp_aov)
+#tukey
+# compact letter display
+#cld <- multcompLetters4(BACI_temp_aov, tukey)
+#cld$`Treatment:timeperiod`
+
+kruskal.test(Mean_daily_instream_temp_C~Treatment_time,data=tperiod_bound)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(Mean_daily_instream_temp_C~Treatment_time,data=tperiod_bound, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
+### No difference in mean daily temp over the study period!
+###
+
+# DIEL
+kruskal.test(Mean_instream_diel_temp_C~Treatment_time,data=tperiod_bound)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(Mean_instream_diel_temp_C~Treatment_time,data=tperiod_bound, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
 
 ```
 
