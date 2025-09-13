@@ -1,7 +1,7 @@
 # Talladega experiment: stream flow reduction effects on organic matter decomposition and fungal growth 
 This code reproduces data processing and analysis for an experiiment where decomposition assays (leaf litter and cotton strips) were deployed in an intermittent stream flow reduction experiment following a BACI design (Before-After, Control-Impact) in an Alabama Piedmont forest. 
 
-![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/published/figure1-07062025.jpg?1757780576)
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/d916b34a-3673-4737-b377-cdf6dce7e81e-1-105-c_orig.jpeg)
 
 A small plywood dam was built and fitted with four flexible PVC drainage pipes to divert flow from an 85-m section of the stream. Sensors and decomposition assays were deployed in the drained reach and in an upstream reference reach. In each reach (Impact and Control), sensors and decomposition assays were deployed in one of two pools, two riffles, and two terrestrial/riparian areas adjacent to each reach.
 
