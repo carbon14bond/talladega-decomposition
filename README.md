@@ -50,23 +50,23 @@ Next, we have code to calculate decomposition rates.
 ###  Summary
 This pipeline uses cotton strip tensile strength (TS) data to calculate tensile strength loss (TSL) and estimate exponential decay constants (k). The percent of tensile strength lost per day of deployment is calculate using the formula from Tiegs et. al. 2019 (https://doi.org/10.1016/j.ecolind.2019.105466):
 
-#### TSL = 100*[1-(TS~t~/TS~0~)]/t 
+#### TSL = 100*[1-(TS<sub>t</sub>/TS<sub>0</sub>)]/t 
 
-where t is incubation time in days, TS~t~ is tensile strength at time t, and TS~0~ is the mean TS of undecomposed control/reference strips. 
+where t is incubation time in days, TS<sub>t</sub> is tensile strength at time t, and TS<sub>0</sub> is the mean TS of undecomposed control/reference strips. 
 
 
-While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k~D~*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302):
+While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k<sub>D</sub>*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302):
 
-#### k~D~= -ln(TS~t~/TS~0~)/t
+#### k<sub>D</sub>= -ln(TS<sub>t</sub>/TS<sub>0</sub>)/t
 
 
 Additionally, we have *temperature data from STIC sensors at each of the 12 locations* where leaf litter and cotton strips were incubated. In a separate pipeline, I used temperature data from each STIC over to generate average temperatures for each incubation period at each STIC, which will allow us to calculate temperature-normalized decay constants. The following derivation of k~T~ assumes a linear effect of temperature on decomposition rates, but note that oter models are also possible:
 
-#### k~T~ = -ln(TS~t~/TS~0~) / ((1/T~R~) * T~avg~ * t)
+#### k<sub>T</sub> = -ln(TS<sub>t</sub>/TS<sub>0</sub>) / ((1/T<sub>R</sub>) * T<sub>avg</sub> * t)
 
-Using the formulas above, we will calculate TSL, k~D~, and k~T~ of cotton strip assays belonging to different treatment groups.
+Using the formulas above, we will calculate TSL, k<sub>D</sub>, and k<sub>T</sub> of cotton strip assays belonging to different treatment groups.
 
-#### Decomposition (k~T~) and fungal biomass (ergosterol) by BACI and topographic treatment group
+#### Decomposition (k<sub>T</sub>) and fungal biomass (ergosterol) by BACI and topographic treatment group
 ![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/kt-ergo-plots-07042025_orig.jpg)
 
 
