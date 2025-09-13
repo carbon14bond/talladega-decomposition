@@ -1,11 +1,11 @@
 # Talladega experiment: stream flow reduction effects on organic matter decomposition and fungal growth 
 This code reproduces data processing and analysis for an experiiment where decomposition assays (leaf litter and cotton strips) were deployed in an intermittent stream flow reduction experiment following a BACI design (Before-After, Control-Impact) in an Alabama Piedmont forest. 
 
-![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/editor/d916b34a-3673-4737-b377-cdf6dce7e81e-1-105-c.jpeg?1743361241)
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/published/figure1-07062025.jpg?1757780576)
 
 A small plywood dam was built and fitted with four flexible PVC drainage pipes to divert flow from an 85-m section of the stream. Sensors and decomposition assays were deployed in the drained reach and in an upstream reference reach. In each reach (Impact and Control), sensors and decomposition assays were deployed in one of two pools, two riffles, and two terrestrial/riparian areas adjacent to each reach.
 
-Decomposition rates, fungal biomass accumulation, and changes in substrate stoichiometry (C: N: P) were compared in two types of decomposition assays: native leaf litter (Tulip poplar i.e. Liriodendron tulipifera), and standardized cotton fabric strips (Tiegs et. al. 2019, https://doi.org/10.1016/j.ecolind.2019.105466). 
+Decomposition rates and fungal biomass accumulation were compared in two types of decomposition assays: native leaf litter (Tulip poplar i.e. Liriodendron tulipifera), and standardized cotton fabric strips (Tiegs et. al. 2019, https://doi.org/10.1016/j.ecolind.2019.105466). 
 
 The following code with reproduce all environmental data and decomposition assay data processing and analysis, with raw data used herein will be made available on Hydroshare (links incoming).
 
@@ -46,7 +46,7 @@ So, daily average rainfall was fairly stable (6-7 mm per day) throughout the stu
 Next, we have code to calculate decomposition rates.
 
 # Decomposition Assays: 
-## Cotton Strip Data Processing 
+## Leaf litter Cotton Strip Data Processing 
 ###  Summary
 This pipeline uses cotton strip tensile strength (TS) data to calculate tensile strength loss (TSL) and estimate exponential decay constants (k). The percent of tensile strength lost per day of deployment is calculate using the formula from Tiegs et. al. 2019 (https://doi.org/10.1016/j.ecolind.2019.105466):
 
@@ -55,7 +55,7 @@ This pipeline uses cotton strip tensile strength (TS) data to calculate tensile 
 where t is incubation time in days, TS<sub>t</sub> is tensile strength at time t, and TS<sub>0</sub> is the mean TS of undecomposed control/reference strips. 
 
 
-While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k<sub>D</sub>*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302):
+While TSL (as percent TS loss per day) is informative, exponential decay is a better model of cotton strip decomposition over time, and thus a more informative output of this pipeline is the exponential decay constant, *k<sub>D</sub>*, calculated using the formula from Burdon et al. 2020 (https://doi.org/10.1111/gcb.15302). Leaf litter decomposition was calculated the ssame way, except using remaining mass of C instead of tensile strength.
 
 #### k<sub>D</sub>= -ln(TS<sub>t</sub>/TS<sub>0</sub>)/t
 
@@ -64,14 +64,10 @@ Additionally, we have *temperature data from STIC sensors at each of the 12 loca
 
 #### k<sub>T</sub> = -ln(TS<sub>t</sub>/TS<sub>0</sub>) / ((1/T<sub>R</sub>) * T<sub>avg</sub> * t)
 
-Using the formulas above, we will calculate TSL, k<sub>D</sub>, and k<sub>T</sub> of cotton strip assays belonging to different treatment groups.
+Using the formulas above, we calculated k<sub>D</sub> and k<sub>T</sub> for cotton strip assays and leaf litter. We also estimated fungal biomass as micrograms of ergosterol per g of C via HPLC. 
 
 #### Decomposition (k<sub>T</sub>) and fungal biomass (ergosterol) by BACI and topographic treatment group
 ![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/kt-ergo-plots-07042025_orig.jpg)
 
-
-
-#### C:N, C:P, N:P by BACI and topographic treatment group
-![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/published/stoich-plots-07042025.jpg?1757781173) 
 
 
