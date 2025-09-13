@@ -1,7 +1,7 @@
 ---
 title: "Talladega weather station"
 author: "Charles T. Bond"
-date: "11/11/2024"
+date: "07/18/2024"
 output: html_document
 ---
 
@@ -98,6 +98,9 @@ Now, I will calculate rainfall daily averages and totals for each of four time p
 ```{r}
 ## Note, I set the limits at 
 #### midnight of the day decomposition assays were deployed (i.e., just before deployment) to the midnight before retrieval.
+
+#Tal_weather5 <- Tal_weather5 %>% mutate(date = as.Date(datetime))
+
 t1Tal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-07 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-06-27 05:00:00", tz="UTC"),]
 
 t2aTal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-06-22 04:45:00", tz="UTC") & Tal_weather$datetime< as.POSIXct("2022-07-12 05:00:00", tz="UTC"),]
@@ -108,17 +111,141 @@ t3Tal_weather <- Tal_weather[Tal_weather$datetime> as.POSIXct("2022-07-22 04:45:
 ```
 
 ```{r}
-library(dplyr)
-t1_rainsum <- t1Tal_weather %>% summarize(time="t1", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+### calculating daily values over each period
+####### t1
+t1_balanced <- t1Tal_weather %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    Daily_avg_temp_C = mean(Temp_C, na.rm = TRUE),
+    Diel_change = max(Temp_C, na.rm = TRUE) - min(Temp_C, na.rm = TRUE),
+    Total_rain = sum(Rainfall_mm, na.rm = TRUE),
+    Max_rainfall_intensity=max(Rainfall_mm)
+  )
+t1_balanced
+
+t1_summary<- t1_balanced %>%
+              summarise(timeperiod="t1",
+                Mean_daily_avg_temp_C=mean(Daily_avg_temp_C),
+                        SD_daily_avg_temp_C=sd(Daily_avg_temp_C),
+                        Mean_diel_temp_C=mean(Diel_change),
+                        SD_diel_temp_C=sd(Diel_change), 
+                        Mean_daily_total_rainfall=mean(Total_rain),
+                        SD_daily_total_rainfall=sd(Total_rain),
+                        Maximum_rainfall_intensity=max(Max_rainfall_intensity),
+                        Rainy_days=sum(Total_rain>1) ### Rainy-day = day with >1mm rainfall total
+                        )
+t1_summary
+
+####### t2a
+t2a_balanced <- t2aTal_weather %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    Daily_avg_temp_C = mean(Temp_C, na.rm = TRUE),
+    Diel_change = max(Temp_C, na.rm = TRUE) - min(Temp_C, na.rm = TRUE),
+    Total_rain = sum(Rainfall_mm, na.rm = TRUE),
+    Max_rainfall_intensity=max(Rainfall_mm)
+  )
+t2a_balanced
+
+t2a_summary<- t2a_balanced %>%
+              summarise(timeperiod="t2a",
+                Mean_daily_avg_temp_C=mean(Daily_avg_temp_C),
+                        SD_daily_avg_temp_C=sd(Daily_avg_temp_C),
+                        Mean_diel_temp_C=mean(Diel_change),
+                        SD_diel_temp_C=sd(Diel_change), 
+                        Mean_daily_total_rainfall=mean(Total_rain),
+                        SD_daily_total_rainfall=sd(Total_rain),
+                        Maximum_rainfall_intensity=max(Max_rainfall_intensity),
+                        Rainy_days=sum(Total_rain>1) ### Rainy-day = day with >1mm rainfall total
+                        )
+t2a_summary
+
+####### t2b
+t2b_balanced <- t2bTal_weather %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    Daily_avg_temp_C = mean(Temp_C, na.rm = TRUE),
+    Diel_change = max(Temp_C, na.rm = TRUE) - min(Temp_C, na.rm = TRUE),
+    Total_rain = sum(Rainfall_mm, na.rm = TRUE),
+    Max_rainfall_intensity=max(Rainfall_mm)
+  )
+t2b_balanced
+
+t2b_summary<- t2b_balanced %>%
+              summarise(timeperiod="t2b",
+                Mean_daily_avg_temp_C=mean(Daily_avg_temp_C),
+                        SD_daily_avg_temp_C=sd(Daily_avg_temp_C),
+                        Mean_diel_temp_C=mean(Diel_change),
+                        SD_diel_temp_C=sd(Diel_change), 
+                        Mean_daily_total_rainfall=mean(Total_rain),
+                        SD_daily_total_rainfall=sd(Total_rain),
+                        Maximum_rainfall_intensity=max(Max_rainfall_intensity),
+                        Rainy_days=sum(Total_rain>1) ### Rainy-day = day with >1mm rainfall total
+                        )
+t2b_summary
+
+####### t3
+t3_balanced <- t3Tal_weather %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    Daily_avg_temp_C = mean(Temp_C, na.rm = TRUE),
+    Diel_change = max(Temp_C, na.rm = TRUE) - min(Temp_C, na.rm = TRUE),
+    Total_rain = sum(Rainfall_mm, na.rm = TRUE),
+    Max_rainfall_intensity=max(Rainfall_mm)
+  )
+t3_balanced
+
+t3_summary<- t3_balanced %>%
+              summarise(timeperiod="t3",
+                Mean_daily_avg_temp_C=mean(Daily_avg_temp_C),
+                        SD_daily_avg_temp_C=sd(Daily_avg_temp_C),
+                        Mean_diel_temp_C=mean(Diel_change),
+                        SD_diel_temp_C=sd(Diel_change), 
+                        Mean_daily_total_rainfall=mean(Total_rain),
+                        SD_daily_total_rainfall=sd(Total_rain),
+                        Maximum_rainfall_intensity=max(Max_rainfall_intensity),
+                        Rainy_days=sum(Total_rain>1) ### Rainy-day = day with >1mm rainfall total
+                        )
+t3_summary
+
+TAL_DD_rainfall_summaries<- rbind(t1_summary,t2a_summary,t2b_summary,t3_summary)
+TAL_DD_rainfall_summaries
+write.csv(TAL_DD_rainfall_summaries, "TAL_DD_rainfall_airtemp_summaries_06.24.2025.csv")
+
+```
+
+
+```{}
+dieltemp_t1 <- mean(aggregate(Temp_C ~ date, data = t1Tal_weather , FUN = function(x) max(x) - min(x)))
+
+t1_rainsum <- t1Tal_weather %>% summarize(time="t1", Daily_avg_temp_C=mean(tapply(Temp_C, date, function(x) max(x) - min(x))), 
+                        Diel_temp_C_avg=mean(tapply(Temp_C, date, function(x) max(x) - min(x))),
+                                          Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20, Rainfall_SD=sd(Rainfall_mm)) 
 t1_rainsum
 
-t2a_rainsum <- t2aTal_weather %>% summarize(time="t2a", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+```
+
+
+```{r}
+library(dplyr)
+t1_rainsum <- t1Tal_weather %>% summarize(time="t1", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20, Rainfall_SD=sd(Rainfall_mm)) 
+t1_rainsum
+
+t2a_rainsum <- t2aTal_weather %>% summarize(time="t2a", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20, Rainfall_SD=sd(Rainfall_mm))
 t2a_rainsum
 
-t2b_rainsum <- t2bTal_weather %>% summarize(time="t2b", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t2b_rainsum <- t2bTal_weather %>% summarize(time="t2b", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/25, Rainfall_SD=sd(Rainfall_mm))
 t2b_rainsum
 
-t3_rainsum <- t3Tal_weather %>% summarize(time="t3", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/20)
+t3_rainsum <- t3Tal_weather %>% summarize(time="t3", Mean_air_temp_C=mean(Temp_C), Total_rainfall_mm=sum(Rainfall_mm), Daily_avg_rainfall_mm=sum(Rainfall_mm)/21, Rainfall_SD=sd(Rainfall_mm))
 t3_rainsum
 
 TAL_DD_rainfall_summaries<- rbind(t1_rainsum,t2a_rainsum,t2b_rainsum,t3_rainsum)
@@ -181,3 +308,33 @@ TalExp_rain_plot2
 
 ```
 
+```{r}
+t1_balanced$period<-"t1"
+t2a_balanced$period<-"t2a"
+t2b_balanced$period<-"t2b"
+t3_balanced$period<-"t3"
+tperiod_bound<- rbind(t1_balanced,t2a_balanced,t2b_balanced,t3_balanced)
+
+tperiod_bound$period<- as.factor(tperiod_bound$period)
+tperiod_bound
+
+kruskal.test(Daily_avg_temp_C~period,data=tperiod_bound)
+
+kruskal.test(Total_rain~period,data=tperiod_bound)
+
+kruskal.test(Max_rainfall_intensity~period,data=tperiod_bound)
+
+kruskal.test(Diel_change~period,data=tperiod_bound)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(Diel_change~period,data=tperiod_bound, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
+
+
+```
