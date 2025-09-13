@@ -22,7 +22,7 @@ In the STIC data processing folder Rmarkdown file `STIC_data_processing.Rmd` in 
 Bond, C. T., D. Peterson, N. Jones, K. Kuehn (2025). Talladega experiment (AIMS Approach IV) Stream Temperature, Intermittency, and Conductivity Data (AIMS_SE_TAL_approach4_STIC), HydroShare, http://www.hydroshare.org/resource/c1cbac78537248c0ad05e35742f6c8fa
 
 The code generates mean daily temperatures for each STIC location over each incubation time period for the decomposition assays, which was used to calculated temperature-normalized decay rates. We also provide visualization of these data
-![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/screenshot-2025-03-31-at-11-32-45-am_orig.png)
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/stream-temperature-07152025_orig.jpg)
 Caption: Panels show combined temperature data for pools and riffles of the Impact and Control reaches. The colored blocks on the bottom represent the incubation periods of decomposition assays. Vertical lines with text indicate when the flow diversion began and when flow was restored after 4 weeks of diversion. Trendlines show generalized additive modal (GAM) fitted with geom_smooth in ggplot. 
 
 
@@ -65,4 +65,13 @@ Additionally, we have *temperature data from STIC sensors at each of the 12 loca
 #### k~T~ = -ln(TS~t~/TS~0~) / ((1/T~R~) * T~avg~ * t)
 
 Using the formulas above, we will calculate TSL, k~D~, and k~T~ of cotton strip assays belonging to different treatment groups.
+
+#### Decomposition (k~T~) and fungal biomass (ergosterol) by BACI and topographic treatment group
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/kt-ergo-plots-07042025_orig.jpg)
+
+
+
+#### C:N, C:P, N:P by BACI and topographic treatment group
+![alt text](https://ctbond.weebly.com/uploads/1/5/2/6/152638843/published/stoich-plots-07042025.jpg?1757781173) 
+
 
