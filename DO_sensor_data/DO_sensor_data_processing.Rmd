@@ -1,7 +1,7 @@
 ---
 title: "Dissolved_oxygen_sensor_processing"
 author: "Charles T. Bond"
-date: "11/12/2024"
+date: "11/12/2024, updated 07/11/2025"
 output: html_document
 ---
 
@@ -73,10 +73,22 @@ head(dd_allDO)
 theme_set(theme_bw())
 
 dd_allDO$Location <- factor(dd_allDO$Location, levels=c('CU', 'IU', 'CD', 'ID'))
+### labeller for facet
+lblr = labeller(Location = 
+    c("CU" = "Control reach: upstream sensor",
+      "IU" = "Impact reach: upstream sensor",
+      "CD" = "Control reach: downstream sensor",
+      "ID" = "Impact reach: downstream sensor"))
+
 dry_down_DO <- ggplot(dd_allDO, aes(x=datetime, y=DO_mgL))+
     geom_point(size=0.2)+
-    facet_wrap(~Location, nr=2)#+
+    facet_wrap(~Location, nr=2, labeller = lblr)+#+
    # geom_smooth(method='gam', col='red', aes(group=Location))
+   theme( #axis.text = element_text( size = 14 ),
+           #axis.text.x = element_text( size = 20 ),
+           #axis.title = element_text( size = 16, face = "bold" ),
+           strip.text = element_text(size = 12, face="bold"))
+
 dry_down_DO
 ```
 
@@ -103,9 +115,6 @@ t3mid<- as.POSIXct("2022-08-12 6:00:00", tz="UTC") - days(10)
 t3max<- as.POSIXct("2022-08-12 18:00:00", tz="UTC")
 
 xtmin<- as.POSIXct("2022-06-05 18:00:00", tz="UTC")
-
-### now with experiment graphics
-
 
 dry_down_DO2<- dry_down_DO+
   aes(ymin=-3.8, xmin=xtmin)+
@@ -134,6 +143,32 @@ dry_down_DO2
 
 
 ```
+
+```{r}
+library(ragg)
+plotout <- "DO_sensor_dataplots_07062025.tiff"
+agg_tiff(filename=plotout, width=2100, height=1600, units="px",
+         pointsize=10, res=600, compression="lzw", scaling=0.5)
+dry_down_DO2
+#plot_grid(nmds2plus,ASVaccumsub,venndiagram,dbRDA_B,dbRDAL,dbRDA_S, labels="AUTO", ncol=3)
+invisible(dev.off())
+
+#bigp<- plot_grid(#kT_allhab_plotCS, kT_LL_allhab_plot,
+#                 #ergo_ug.pgC_CS_BACI_plot, ergo_ug.pgC_LL_allhab_plot,
+#                 CN_allhab_plotCS, CN_allhab_plotLL, 
+#                 CP_allhab_plotCS, CP_allhab_plotLL,
+#                 NP_allhab_plotCS, NP_allhab_plotLL,
+#                 labels=c('A','B','C','D' ,'E','F'#,'G','H'
+#                          ), ncol=2)
+#bigp
+#bigpl<- plot_grid(bigp, legend, rel_widths = c(1,0.15),
+               #  CN_allhab_plotCS, CN_allhab_plotLL, 
+                # CP_allhab_plotCS, CP_allhab_plotLL,
+#                  ncol=2)
+#bigpl
+```
+
+
 
 ### Calculating dissolved oxygen means for each sensor in each incubation period
 
@@ -270,4 +305,376 @@ write.csv(stic_decomptime_summaries, "expcore_24hrDO_summaries.csv")
 
 ```
 
+```{r}
+### calculating daily values for each STIC
+####### t1
+t1DO_balanced <- t1DO %>%
+  ### Shifting timestamps by 6 hours to make "days" start at midnight, for complete 24-hour groupings. Note t1 wass missing the first ~week of data so different than the other periods. 
+  mutate(adjusted_date = as.Date(datetime + hours(6))) %>%
+  group_by(Location, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_DO_mgL = mean(DO_mgL, na.rm = TRUE),
+    Diel_DO_change = max(DO_mgL, na.rm = TRUE) - min(DO_mgL, na.rm = TRUE)
+  )
+t1DO_balanced
+
+t1DO_summary<- t1DO_balanced %>%
+    group_by(Location) %>%
+              summarise(timeperiod="t1",
+                Mean_daily_avg_DO_mgL=mean(Daily_avg_DO_mgL),
+                        SD_daily_avg_DO_mgL=sd(Daily_avg_DO_mgL),
+                        Mean_instream_diel_DO_change=mean(Diel_DO_change),
+                        SD_instream_diel_DO_change=sd(Diel_DO_change)
+                        )
+t1DO_summary
+
+####### t2a
+t2aDO_balanced <- t2aDO %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Location, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_DO_mgL = mean(DO_mgL, na.rm = TRUE),
+    Diel_DO_change = max(DO_mgL, na.rm = TRUE) - min(DO_mgL, na.rm = TRUE)
+  )
+t2aDO_balanced
+
+t2aDO_summary<- t2aDO_balanced %>%
+    group_by(Location) %>%
+              summarise(timeperiod="t2a",
+                Mean_daily_avg_DO_mgL=mean(Daily_avg_DO_mgL),
+                        SD_daily_avg_DO_mgL=sd(Daily_avg_DO_mgL),
+                        Mean_instream_diel_DO_change=mean(Diel_DO_change),
+                        SD_instream_diel_DO_change=sd(Diel_DO_change)
+                        )
+t2aDO_summary
+
+####### t2b
+t2bDO_balanced <- t2bDO %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Location, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_DO_mgL = mean(DO_mgL, na.rm = TRUE),
+    Diel_DO_change = max(DO_mgL, na.rm = TRUE) - min(DO_mgL, na.rm = TRUE)
+  )
+t2bDO_balanced
+
+t2bDO_summary<- t2bDO_balanced %>%
+    group_by(Location) %>%
+              summarise(timeperiod="t2b",
+                Mean_daily_avg_DO_mgL=mean(Daily_avg_DO_mgL),
+                        SD_daily_avg_DO_mgL=sd(Daily_avg_DO_mgL),
+                        Mean_instream_diel_DO_change=mean(Diel_DO_change),
+                        SD_instream_diel_DO_change=sd(Diel_DO_change)
+                        )
+t2bDO_summary
+
+####### t3
+t3DO_balanced <- t3DO %>%
+  ### Shifting timestamps by 5 hours to make "days" start at midnight, for complete 24-hour groupings.
+  mutate(adjusted_date = as.Date(datetime - hours(5))) %>%
+  group_by(Location, adjusted_date) %>%
+  summarise(#Site=mode(Site),
+            #Treatment=Treatment,
+            #Habitat=Habitat,
+    Daily_avg_DO_mgL = mean(DO_mgL, na.rm = TRUE),
+    Diel_DO_change = max(DO_mgL, na.rm = TRUE) - min(DO_mgL, na.rm = TRUE)
+  )
+t3DO_balanced
+
+t3DO_summary<- t3DO_balanced %>%
+    group_by(Location) %>%
+              summarise(timeperiod="t3",
+                Mean_daily_avg_DO_mgL=mean(Daily_avg_DO_mgL),
+                        SD_daily_avg_DO_mgL=sd(Daily_avg_DO_mgL),
+                        Mean_instream_diel_DO_change=mean(Diel_DO_change),
+                        SD_instream_diel_DO_change=sd(Diel_DO_change)
+                        )
+t3DO_summary
+
+TAL_DD_DO_all<- rbind(t1DO_summary,t2aDO_summary,t2bDO_summary,t3DO_summary)
+TAL_DD_DO_all
+write.csv(TAL_DD_DO_all, "TAL_DD_instream_TAL_DD_DO_all_summaries_06.25.2025.csv")
 ```
+
+Above we have values calculated for each STIC X period. Below we combine all in-stream STICs for combine averages by treatment (i.e., two riffles and two pools per reach)
+```{r}
+TAL_DD_DO_all$Treatment<-ifelse(TAL_DD_DO_all$Location=="IU"|TAL_DD_DO_all$Location=="ID","Impact","Control")
+
+
+instream_summary<- TAL_DD_DO_all %>%
+    group_by(Treatment, timeperiod) %>%
+              summarise(
+                Mean_DO=mean(Mean_daily_avg_DO_mgL),
+                        SD_DO=mean(SD_daily_avg_DO_mgL),
+                        Mean_diel_DO_change=mean(Mean_instream_diel_DO_change),
+                        SD_diel_DO_change=mean(SD_instream_diel_DO_change)
+                        )
+instream_summary
+
+write.csv(instream_summary, "TAL_DD_instream_DO_summarytab_06.24.2025.csv")
+
+```
+
+## Check
+Does DO in the Control reach predict DO in the Impact reach before treatment?
+```{r}
+Ctabt1 <- t1DO_balanced[t1DO_balanced$Location=="CU"|t1DO_balanced$Location=="CD",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    C_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    C_Diel_DO_change = mean(Diel_DO_change),
+  )
+Ctabt1
+
+Itabt1<- t1DO_balanced[t1DO_balanced$Location=="IU"|t1DO_balanced$Location=="ID",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    I_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    I_Diel_DO_change = mean(Diel_DO_change),
+  )
+Itabt1
+
+CI_tabt1<- merge(Ctabt1, Itabt1, by="adjusted_date")
+
+lmtest<- summary(lm(I_Daily_avg_DO_mgL~C_Daily_avg_DO_mgL, data=CI_tabt1))
+lmtest
+CI_Daily_avg_DO_mgL <- ggplot(CI_tabt1, aes(x=C_Daily_avg_DO_mgL, y=I_Daily_avg_DO_mgL))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 4))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_Daily_avg_DO_mgL
+#########
+Ctabt2a <- t2aDO_balanced[t2aDO_balanced$Location=="CU"|t2aDO_balanced$Location=="CD",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    C_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    C_Diel_DO_change = mean(Diel_DO_change),
+  )
+Ctabt2a
+
+Itabt2a<- t2aDO_balanced[t2aDO_balanced$Location=="IU"|t2aDO_balanced$Location=="ID",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    I_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    I_Diel_DO_change = mean(Diel_DO_change),
+  )
+Itabt2a
+
+CI_tabt2a<- merge(Ctabt2a, Itabt2a, by="adjusted_date")
+
+lmtest<- summary(lm(I_Daily_avg_DO_mgL~C_Daily_avg_DO_mgL, data=CI_tabt2a))
+lmtest
+CI_Daily_avg_DO_mgL <- ggplot(CI_tabt2a, aes(x=C_Daily_avg_DO_mgL, y=I_Daily_avg_DO_mgL))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 4))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_Daily_avg_DO_mgL
+
+
+########
+Ctabt2b <- t2bDO_balanced[t2bDO_balanced$Location=="CU"|t2bDO_balanced$Location=="CD",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    C_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    C_Diel_DO_change = mean(Diel_DO_change),
+  )
+Ctabt2b
+
+Itabt2b<- t2bDO_balanced[t2bDO_balanced$Location=="IU"|t2bDO_balanced$Location=="ID",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    I_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    I_Diel_DO_change = mean(Diel_DO_change),
+  )
+Itabt2b
+
+CI_tabt2b<- merge(Ctabt2b, Itabt2b, by="adjusted_date")
+
+lmtest<- summary(lm(I_Daily_avg_DO_mgL~C_Daily_avg_DO_mgL, data=CI_tabt2b))
+lmtest
+CI_Daily_avg_DO_mgL <- ggplot(CI_tabt2b, aes(x=C_Daily_avg_DO_mgL, y=I_Daily_avg_DO_mgL))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 4))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_Daily_avg_DO_mgL
+
+
+#####
+
+Ctabt3 <- t3DO_balanced[t3DO_balanced$Location=="CU"|t3DO_balanced$Location=="CD",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    C_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    C_Diel_DO_change = mean(Diel_DO_change),
+  )
+Ctabt3
+
+Itabt3<- t3DO_balanced[t3DO_balanced$Location=="IU"|t3DO_balanced$Location=="ID",] %>%
+  group_by(adjusted_date) %>%
+  summarise(
+    I_Daily_avg_DO_mgL = mean(Daily_avg_DO_mgL),
+    I_Diel_DO_change = mean(Diel_DO_change),
+  )
+Itabt3
+
+CI_tabt3<- merge(Ctabt3, Itabt3, by="adjusted_date")
+
+lmtest<- summary(lm(I_Daily_avg_DO_mgL~C_Daily_avg_DO_mgL, data=CI_tabt3))
+lmtest
+CI_Daily_avg_DO_mgL <- ggplot(CI_tabt3, aes(x=C_Daily_avg_DO_mgL, y=I_Daily_avg_DO_mgL))+
+    geom_point()+
+  geom_smooth(method='lm',color = "black")+
+    geom_text(
+            aes(x = -Inf, y = Inf, 
+                label = paste("R^2=", round(lmtest$r.squared, 3), "   p=", round(lmtest$coefficients[2,4], 4))),
+            vjust = 2, 
+            hjust = -1,
+            size = 4, color = "black")
+CI_Daily_avg_DO_mgL
+```
+
+
+
+
+
+
+### Testing for effects on DO
+Now, to return to the daily average DOs from phase t2b, which captures the complete flow reduction phase, we want to test that the drop in dissolved oxygen was significant.
+
+```{}
+### Check that impact and contrrol reaches did not differ in dissolved oxygen during 'before' (t1) timeframe:
+t1DO_balanced
+t1DO_balanced$Treatment<-ifelse(t1DO_balanced$Location=="IU"|t1DO_balanced$Location=="ID","Impact","Control")
+
+### Mixed effects model testing for flow diversion effects on dissolved oxygen
+library(lme4)
+### Different sensors and dates accounted for as random effects
+model <- lmer(Daily_avg_DO_mgL ~ Treatment + (1 | Location) + (1 | adjusted_date), data = t1DO_balanced)
+summary(model)
+#plot(model)
+anova(model)
+### Compares model without treatment against model with treatment
+anova(model, update(model, ~ . - Treatment))
+### Good! p = 0.2412, no ifference between impact and control reach before manipulation.
+
+
+t2bDO_balanced
+t2bDO_balanced$Treatment<-ifelse(t2bDO_balanced$Location=="IU"|t2bDO_balanced$Location=="ID","Impact","Control")
+
+### Mixed effects model testing for flow diversion effects on dissolved oxygen
+library(lme4)
+### Different sensors and dates accounted for as random effects
+model <- lmer(Daily_avg_DO_mgL ~ Treatment + (1 | Location) + (1 | adjusted_date), data = t2bDO_balanced)
+summary(model)
+plot(model)
+anova(model)
+### Compares model without treatment against model with treatment
+anova(model, update(model, ~ . - Treatment))
+### Treatment was ssignificant after accounting for random effects!
+
+
+t3DO_balanced
+t3DO_balanced$Treatment<-ifelse(t3DO_balanced$Location=="IU"|t3DO_balanced$Location=="ID","Impact","Control")
+
+### Mixed effects model testing for flow diversion effects on dissolved oxygen
+library(lme4)
+### Different sensors and dates accounted for as random effects
+model <- lmer(Daily_avg_DO_mgL ~ Treatment + (1 | Location) + (1 | adjusted_date), data = t3DO_balanced)
+summary(model)
+plot(model)
+anova(model)
+### Compares model without treatment against model with treatment
+anova(model, update(model, ~ . - Treatment))
+### Treatment was ssignificant after accounting for random effects!
+
+```
+
+```{r}
+t1DO_balanced
+t1DO_balanced$Treatment<-ifelse(t1DO_balanced$Location=="IU"|t1DO_balanced$Location=="ID","Impact","Control")
+t1DO_balanced$period<-"t1"
+
+t2aDO_balanced
+t2aDO_balanced$Treatment<-ifelse(t2aDO_balanced$Location=="IU"|t2aDO_balanced$Location=="ID","Impact","Control")
+t2aDO_balanced$period<-"t2a"
+
+t2bDO_balanced
+t2bDO_balanced$Treatment<-ifelse(t2bDO_balanced$Location=="IU"|t2bDO_balanced$Location=="ID","Impact","Control")
+t2bDO_balanced$period<-"t2b"
+
+t3DO_balanced
+t3DO_balanced$Treatment<-ifelse(t3DO_balanced$Location=="IU"|t3DO_balanced$Location=="ID","Impact","Control")
+t3DO_balanced$period<-"t3"
+
+tperiod_bound<- rbind(t1DO_balanced,t2aDO_balanced,t2bDO_balanced,t3DO_balanced)
+
+tperiod_bound$Treatment<- as.factor(tperiod_bound$Treatment)
+tperiod_bound$period<- as.factor(tperiod_bound$period)
+
+library(multcompView)
+#BACI_DO_aov<- aov(Daily_avg_DO_mgL~Treatment*period,data=tperiod_bound)
+#summary(BACI_DO_aov)
+#tukey<- TukeyHSD(BACI_DO_aov)
+#tukey
+# compact letter display
+#cld <- multcompLetters4(BACI_DO_aov, tukey)
+#cld$`Treatment:period`
+
+##### Trying with nonparametric Kruskal Wallis test
+tperiod_bound<- tperiod_bound %>% mutate(Treatment_time = paste(Treatment, period, sep = '_'))
+kruskal.test(Daily_avg_DO_mgL~Treatment_time,data=tperiod_bound)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(Daily_avg_DO_mgL~Treatment_time,data=tperiod_bound, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
+```
+
+Diel
+```{r}
+##### Trying with nonparametric Kruskal Wallis test
+#tperiod_bound<- tperiod_bound %>% mutate(Treatment_time = paste(Treatment, period, sep = '_'))
+kruskal.test(Diel_DO_change~Treatment_time,data=tperiod_bound)
+
+library(FSA)
+#perform Dunn's Test with Holm correction for p-values
+dt<- dunnTest(Diel_DO_change~Treatment_time,data=tperiod_bound, method="holm")
+library(rcompanion)
+dtr<- dt$res
+cld <- cldList(comparison = dtr$Comparison,
+        p.value    = dtr$P.adj,
+        threshold  = 0.05)
+cld
+
+
+```
+
+
